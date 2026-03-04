@@ -8,7 +8,7 @@ class AnalizadorRO:
         self.clientes_muestra = clientes_muestra if clientes_muestra else []
         
         if 'MontoOpe' in self.df.columns:
-            self.df['MontoOpe'] = pd.to_numeric(self.df['MontoOpe'], errors='coerce')
+            self.df['MontoOpe'] = pd.to_numeric(self.df['MontoOpe'], errors='coerce').fillna(0)
         if 'FechaOp' in self.df.columns:
             self.df['FechaOp'] = pd.to_datetime(self.df['FechaOp'], errors='coerce')
         if 'HoraOp' in self.df.columns:
@@ -20,7 +20,7 @@ class AnalizadorRO:
             except:
                 self.df['datetime'] = self.df['FechaOp']
     
-    def es_persona(self, tipo_per): 
+    def es_persona(self, tipo_per):
         if pd.isna(tipo_per) or tipo_per is None:
             return False
         return 'natural' in str(tipo_per).lower()
@@ -71,25 +71,25 @@ class AnalizadorRO:
     def reporte_2_vinculado_ejecutantes(self, tipo='todos'):
         df = self.filtrar_muestra_ejecutantes()
         if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona)]
+            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
         elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa)]
+            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
         return self._generar_ranking(df, 'destipclasifpartyrelacionado')
     
     def reporte_3_actividad_ben_ejecutantes(self, tipo='todos'):
         df = self.filtrar_muestra_ejecutantes()
         if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona)]
+            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
         elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa)]
+            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
         return self._generar_ranking(df, 'OcupBen')
     
     def reporte_4_tipo_ope_ejecutantes(self, tipo='todos'):
         df = self.filtrar_muestra_ejecutantes()
         if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona)]
+            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
         elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa)]
+            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
         return self._generar_ranking(df, 'TipoOpe')
     
     def reporte_5_beneficiarios_comunes(self):
@@ -120,9 +120,9 @@ class AnalizadorRO:
         df = self.filtrar_muestra_ejecutantes()
         df = df[df['TipoFondo'] == 'Operación realizada con fondos en efectivo']
         if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona)]
+            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
         elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa)]
+            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
         return self._generar_ranking(df, 'OcupBen')
     
     def reporte_8_ordenantes_comunes(self):
@@ -144,25 +144,25 @@ class AnalizadorRO:
     def reporte_10_vinculado_ordenantes(self, tipo='todos'):
         df = self.filtrar_muestra_ordenantes()
         if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona)]
+            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
         elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa)]
+            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
         return self._generar_ranking(df, 'destipclasifpartyrelacionado')
     
     def reporte_11_actividad_ben_ordenantes(self, tipo='todos'):
         df = self.filtrar_muestra_ordenantes()
         if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona)]
+            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
         elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa)]
+            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
         return self._generar_ranking(df, 'OcupBen')
     
     def reporte_12_tipo_ope_ordenantes(self, tipo='todos'):
         df = self.filtrar_muestra_ordenantes()
         if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona)]
+            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
         elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa)]
+            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
         return self._generar_ranking(df, 'TipoOpe')
     
     def reporte_13_beneficiarios_comunes_ordenantes(self):
@@ -193,9 +193,9 @@ class AnalizadorRO:
         df = self.filtrar_muestra_ordenantes()
         df = df[df['TipoFondo'] == 'Operación realizada con fondos en efectivo']
         if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona)]
+            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
         elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa)]
+            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
         return self._generar_ranking(df, 'OcupBen')
     
     def reporte_16_ejecutantes_comunes_ordenantes(self):
@@ -217,25 +217,25 @@ class AnalizadorRO:
     def reporte_18_vinculado_beneficiarios(self, tipo='todos'):
         df = self.filtrar_muestra_beneficiarios()
         if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona)]
+            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
         elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa)]
+            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
         return self._generar_ranking(df, 'destipclasifpartyrelacionado')
     
     def reporte_19_actividad_ord_beneficiarios(self, tipo='todos'):
         df = self.filtrar_muestra_beneficiarios()
         if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona)]
+            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
         elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa)]
+            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
         return self._generar_ranking(df, 'OcupOrd')
     
     def reporte_20_tipo_ope_beneficiarios(self, tipo='todos'):
         df = self.filtrar_muestra_beneficiarios()
         if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona)]
+            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
         elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa)]
+            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
         return self._generar_ranking(df, 'TipoOpe')
     
     def reporte_21_ordenantes_comunes_beneficiarios(self):
@@ -266,9 +266,9 @@ class AnalizadorRO:
         df = self.filtrar_muestra_beneficiarios()
         df = df[df['TipoFondo'] == 'Operación realizada con fondos en efectivo']
         if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona)]
+            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
         elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa)]
+            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
         return self._generar_ranking(df, 'OcupSol')
     
     def reporte_24_ejecutantes_comunes_beneficiarios(self):
@@ -366,14 +366,22 @@ class AnalizadorRO:
         resultados = {}
         
         def procesar_rol(df, tipo_funcion, nombre_rol):
-            df_filtrado = df[df['TipPerOrd'].apply(tipo_funcion)]
+            df_filtrado = df[df['TipPerOrd'].apply(tipo_funcion).astype(bool)] if tipo_funcion else df
             if not df_filtrado.empty:
-                total = len(df_filtrado)
-                efectivo = len(df_filtrado[df_filtrado['TipoFondo'] == 'Operación realizada con fondos en efectivo'])
+                total_ops = len(df_filtrado)
+                monto_total = df_filtrado['MontoOpe'].sum()
+                
+                df_efectivo = df_filtrado[df_filtrado['TipoFondo'] == 'Operación realizada con fondos en efectivo']
+                efectivo_ops = len(df_efectivo)
+                monto_efectivo = df_efectivo['MontoOpe'].sum()
+                
                 resultados[nombre_rol] = {
-                    'total': total,
-                    'efectivo': efectivo,
-                    'porcentaje': round(efectivo/total*100, 2) if total > 0 else 0
+                    'total_ops': total_ops,
+                    'efectivo_ops': efectivo_ops,
+                    'porc_ops': round(efectivo_ops/total_ops*100, 2) if total_ops > 0 else 0,
+                    'monto_total': monto_total,
+                    'monto_efectivo': monto_efectivo,
+                    'porc_monto': round(monto_efectivo/monto_total*100, 2) if monto_total > 0 else 0
                 }
                 
         df_ej = self.filtrar_muestra_ejecutantes()
@@ -445,26 +453,38 @@ class AnalizadorRO:
         df_sol_ord = self.df[(self.df['DireccionSol'].notna()) & (self.df['DireccionOrd'].notna()) & (self.df['DireccionSol'] == self.df['DireccionOrd'])]
         for dir in df_sol_ord['DireccionSol'].unique()[:50]:
             df_g = df_sol_ord[df_sol_ord['DireccionSol'] == dir]
-            resultados.append({'direccion': dir, 'tipo': 'Sol-Ord', 'operaciones': len(df_g), 'monto': df_g['MontoOpe'].sum(), 
-                               'ejecutantes': ', '.join([str(x) for x in df_g['NroDocSol'].dropna().unique()]), 
-                               'ordenantes': ', '.join([str(x) for x in df_g['NroDocOrd'].dropna().unique()]), 
-                               'beneficiarios': '-'})
+            resultados.append({
+                'direccion': dir, 'tipo': 'Sol-Ord', 'operaciones': len(df_g), 'monto': df_g['MontoOpe'].sum(), 
+                'cant_ejecutantes': df_g['NroDocSol'].nunique(),
+                'ejecutantes': ', '.join([str(x) for x in df_g['NroDocSol'].dropna().unique()]), 
+                'cant_ordenantes': df_g['NroDocOrd'].nunique(),
+                'ordenantes': ', '.join([str(x) for x in df_g['NroDocOrd'].dropna().unique()]), 
+                'cant_beneficiarios': 0, 'beneficiarios': '-'
+            })
             
         df_sol_ben = self.df[(self.df['DireccionSol'].notna()) & (self.df['DireccionBen'].notna()) & (self.df['DireccionSol'] == self.df['DireccionBen'])]
         for dir in df_sol_ben['DireccionSol'].unique()[:50]:
             df_g = df_sol_ben[df_sol_ben['DireccionSol'] == dir]
-            resultados.append({'direccion': dir, 'tipo': 'Sol-Ben', 'operaciones': len(df_g), 'monto': df_g['MontoOpe'].sum(), 
-                               'ejecutantes': ', '.join([str(x) for x in df_g['NroDocSol'].dropna().unique()]), 
-                               'ordenantes': '-', 
-                               'beneficiarios': ', '.join([str(x) for x in df_g['NroDocBen'].dropna().unique()])})
+            resultados.append({
+                'direccion': dir, 'tipo': 'Sol-Ben', 'operaciones': len(df_g), 'monto': df_g['MontoOpe'].sum(), 
+                'cant_ejecutantes': df_g['NroDocSol'].nunique(),
+                'ejecutantes': ', '.join([str(x) for x in df_g['NroDocSol'].dropna().unique()]), 
+                'cant_ordenantes': 0, 'ordenantes': '-', 
+                'cant_beneficiarios': df_g['NroDocBen'].nunique(),
+                'beneficiarios': ', '.join([str(x) for x in df_g['NroDocBen'].dropna().unique()])
+            })
             
         df_ord_ben = self.df[(self.df['DireccionOrd'].notna()) & (self.df['DireccionBen'].notna()) & (self.df['DireccionOrd'] == self.df['DireccionBen'])]
         for dir in df_ord_ben['DireccionOrd'].unique()[:50]:
             df_g = df_ord_ben[df_ord_ben['DireccionOrd'] == dir]
-            resultados.append({'direccion': dir, 'tipo': 'Ord-Ben', 'operaciones': len(df_g), 'monto': df_g['MontoOpe'].sum(), 
-                               'ejecutantes': '-', 
-                               'ordenantes': ', '.join([str(x) for x in df_g['NroDocOrd'].dropna().unique()]), 
-                               'beneficiarios': ', '.join([str(x) for x in df_g['NroDocBen'].dropna().unique()])})
+            resultados.append({
+                'direccion': dir, 'tipo': 'Ord-Ben', 'operaciones': len(df_g), 'monto': df_g['MontoOpe'].sum(), 
+                'cant_ejecutantes': 0, 'ejecutantes': '-', 
+                'cant_ordenantes': df_g['NroDocOrd'].nunique(),
+                'ordenantes': ', '.join([str(x) for x in df_g['NroDocOrd'].dropna().unique()]), 
+                'cant_beneficiarios': df_g['NroDocBen'].nunique(),
+                'beneficiarios': ', '.join([str(x) for x in df_g['NroDocBen'].dropna().unique()])
+            })
             
         return pd.DataFrame(resultados)
     
@@ -473,26 +493,38 @@ class AnalizadorRO:
         df_sol_ord = self.df[(self.df['TelefonoSol'].notna()) & (self.df['TelefonoOrd'].notna()) & (self.df['TelefonoSol'] == self.df['TelefonoOrd'])]
         for tel in df_sol_ord['TelefonoSol'].unique()[:50]:
             df_g = df_sol_ord[df_sol_ord['TelefonoSol'] == tel]
-            resultados.append({'telefono': tel, 'tipo': 'Sol-Ord', 'operaciones': len(df_g), 'monto': df_g['MontoOpe'].sum(), 
-                               'ejecutantes': ', '.join([str(x) for x in df_g['NroDocSol'].dropna().unique()]), 
-                               'ordenantes': ', '.join([str(x) for x in df_g['NroDocOrd'].dropna().unique()]), 
-                               'beneficiarios': '-'})
+            resultados.append({
+                'telefono': tel, 'tipo': 'Sol-Ord', 'operaciones': len(df_g), 'monto': df_g['MontoOpe'].sum(), 
+                'cant_ejecutantes': df_g['NroDocSol'].nunique(),
+                'ejecutantes': ', '.join([str(x) for x in df_g['NroDocSol'].dropna().unique()]), 
+                'cant_ordenantes': df_g['NroDocOrd'].nunique(),
+                'ordenantes': ', '.join([str(x) for x in df_g['NroDocOrd'].dropna().unique()]), 
+                'cant_beneficiarios': 0, 'beneficiarios': '-'
+            })
             
         df_sol_ben = self.df[(self.df['TelefonoSol'].notna()) & (self.df['TelefonoBen'].notna()) & (self.df['TelefonoSol'] == self.df['TelefonoBen'])]
         for tel in df_sol_ben['TelefonoSol'].unique()[:50]:
             df_g = df_sol_ben[df_sol_ben['TelefonoSol'] == tel]
-            resultados.append({'telefono': tel, 'tipo': 'Sol-Ben', 'operaciones': len(df_g), 'monto': df_g['MontoOpe'].sum(), 
-                               'ejecutantes': ', '.join([str(x) for x in df_g['NroDocSol'].dropna().unique()]), 
-                               'ordenantes': '-', 
-                               'beneficiarios': ', '.join([str(x) for x in df_g['NroDocBen'].dropna().unique()])})
+            resultados.append({
+                'telefono': tel, 'tipo': 'Sol-Ben', 'operaciones': len(df_g), 'monto': df_g['MontoOpe'].sum(), 
+                'cant_ejecutantes': df_g['NroDocSol'].nunique(),
+                'ejecutantes': ', '.join([str(x) for x in df_g['NroDocSol'].dropna().unique()]), 
+                'cant_ordenantes': 0, 'ordenantes': '-', 
+                'cant_beneficiarios': df_g['NroDocBen'].nunique(),
+                'beneficiarios': ', '.join([str(x) for x in df_g['NroDocBen'].dropna().unique()])
+            })
             
         df_ord_ben = self.df[(self.df['TelefonoOrd'].notna()) & (self.df['TelefonoBen'].notna()) & (self.df['TelefonoOrd'] == self.df['TelefonoBen'])]
         for tel in df_ord_ben['TelefonoOrd'].unique()[:50]:
             df_g = df_ord_ben[df_ord_ben['TelefonoOrd'] == tel]
-            resultados.append({'telefono': tel, 'tipo': 'Ord-Ben', 'operaciones': len(df_g), 'monto': df_g['MontoOpe'].sum(), 
-                               'ejecutantes': '-', 
-                               'ordenantes': ', '.join([str(x) for x in df_g['NroDocOrd'].dropna().unique()]), 
-                               'beneficiarios': ', '.join([str(x) for x in df_g['NroDocBen'].dropna().unique()])})
+            resultados.append({
+                'telefono': tel, 'tipo': 'Ord-Ben', 'operaciones': len(df_g), 'monto': df_g['MontoOpe'].sum(), 
+                'cant_ejecutantes': 0, 'ejecutantes': '-', 
+                'cant_ordenantes': df_g['NroDocOrd'].nunique(),
+                'ordenantes': ', '.join([str(x) for x in df_g['NroDocOrd'].dropna().unique()]), 
+                'cant_beneficiarios': df_g['NroDocBen'].nunique(),
+                'beneficiarios': ', '.join([str(x) for x in df_g['NroDocBen'].dropna().unique()])
+            })
             
         return pd.DataFrame(resultados)
     
