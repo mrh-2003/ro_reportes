@@ -29,7 +29,6 @@ def aplicar_filtros_generales(df_todas_operaciones):
         st.info("💡 Modifique los filtros y presione 'Aplicar Filtros'")
         filtros_temp = {}
         st.subheader("📅 Rangos de Fecha")
-        st.caption("Columna: FechaOp")
         
         if 'FechaOp' in df_todas_operaciones.columns:
             try:
@@ -53,8 +52,6 @@ def aplicar_filtros_generales(df_todas_operaciones):
             filtros_temp['fecha_max'] = fecha_max
         
         st.subheader("💰 Rangos de Monto")
-        st.caption("Columna: MontoOpe")
-        
         if 'MontoOpe' in df_todas_operaciones.columns:
             monto_min_bd = float(df_todas_operaciones['MontoOpe'].min())
             monto_max_bd = float(df_todas_operaciones['MontoOpe'].max())
@@ -76,28 +73,24 @@ def aplicar_filtros_generales(df_todas_operaciones):
             filtros_temp['monto_max'] = monto_max
         
         st.subheader("🏦 Filtros de Operación")
-        st.caption("Columna: MonedaUtilizada")
         opciones_moneda = ["Sol peruano", "Dólar estadounidense", "Euro", "Libra esterlina (de Gran Bretaña)"]
         moneda_util = st.multiselect("Moneda Utilizada", options=opciones_moneda, default=opciones_moneda, key="moneda_input")
         if len(moneda_util) < len(opciones_moneda) and len(moneda_util) > 0:
             filtros_temp['moneda_utilizada'] = moneda_util
             st.session_state.filtros_modificados = True
         
-        st.caption("Columna: TipoFondo")
         opciones_fondo = ["Operación realizada con fondos en efectivo", "Operación realizada con fondos que no son efectivo"]
         tipo_fondo = st.multiselect("Tipo Fondo", options=opciones_fondo, default=opciones_fondo, key="fondo_input")
         if len(tipo_fondo) < len(opciones_fondo) and len(tipo_fondo) > 0:
             filtros_temp['tipo_fondo'] = tipo_fondo
             st.session_state.filtros_modificados = True
         
-        st.caption("Columna: FormaOpe")
         opciones_forma = ["Otros", "Medios o plataformas virtuales", "Presencialmente (a través de la ventanilla)", "Procesamiento por lotes (batch)"]
         forma_ope = st.multiselect("Forma Operación", options=opciones_forma, default=opciones_forma, key="forma_input")
         if len(forma_ope) < len(opciones_forma) and len(forma_ope) > 0:
             filtros_temp['forma_ope'] = forma_ope
             st.session_state.filtros_modificados = True
         
-        st.caption("Columna: TipoOpe")
         if 'TipoOpe' in df_todas_operaciones.columns:
             opciones_tipo_ope = sorted(df_todas_operaciones['TipoOpe'].dropna().unique().tolist())
             if len(opciones_tipo_ope) > 0 and len(opciones_tipo_ope) < 50:
@@ -106,7 +99,6 @@ def aplicar_filtros_generales(df_todas_operaciones):
                     filtros_temp['tipo_ope'] = tipo_ope_sel
                     st.session_state.filtros_modificados = True
         
-        st.caption("Columna: destipclasifpartyrelacionado")
         if 'destipclasifpartyrelacionado' in df_todas_operaciones.columns:
             opciones_vinculo = sorted(df_todas_operaciones['destipclasifpartyrelacionado'].dropna().unique().tolist())
             if len(opciones_vinculo) > 0:
@@ -126,14 +118,12 @@ def aplicar_filtros_generales(df_todas_operaciones):
             st.session_state.filtros_aplicados = filtros_temp.copy()
             st.session_state.filtros_modificados = False
             st.rerun()
-        
         return st.session_state.filtros_aplicados
 
 def pagina_carga_datos():
     st.title("📤 Carga de Datos RO")
     codigo_carga = st.text_input("Código de Carga (identificador único)", key="codigo_carga")
     archivo = st.file_uploader("Seleccionar archivo Excel del RO", type=['xlsx', 'xls'])
-    
     if archivo and codigo_carga:
         if st.button("Cargar Datos", type="primary"):
             try:
@@ -144,8 +134,6 @@ def pagina_carga_datos():
                     df['FechaOp'] = pd.to_datetime(df['FechaOp'], errors='coerce')
                 if 'MontoOpe' in df.columns:
                     df['MontoOpe'] = pd.to_numeric(df['MontoOpe'], errors='coerce')
-                if 'MontoOpeCambio' in df.columns:
-                    df['MontoOpeCambio'] = pd.to_numeric(df['MontoOpeCambio'], errors='coerce')
                 
                 exito, resultado = st.session_state.db_manager.cargar_datos(df, codigo_carga, archivo.name)
                 if exito:
@@ -167,18 +155,11 @@ def pagina_carga_datos():
     
     st.divider()
     st.subheader("⚙️ Configuración de Clientes Muestra")
-    
     todos_documentos = st.session_state.db_manager.get_todos_documentos()
-    
     if not st.session_state.clientes_muestra and todos_documentos:
         st.session_state.clientes_muestra = todos_documentos
 
-    clientes_seleccionados = st.multiselect(
-        "Documentos de clientes (Puede eliminar o agregar de la lista)",
-        options=todos_documentos,
-        default=st.session_state.clientes_muestra
-    )
-    
+    clientes_seleccionados = st.multiselect("Documentos de clientes (Puede eliminar o agregar de la lista)", options=todos_documentos, default=st.session_state.clientes_muestra)
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Guardar Clientes Muestra", type="primary"):
@@ -189,7 +170,6 @@ def pagina_carga_datos():
         if st.button("Restaurar Todos los Clientes"):
             st.session_state.clientes_muestra = todos_documentos
             st.rerun()
-            
     if st.session_state.clientes_muestra:
         st.write(f"**Clientes en muestra activos:** {len(st.session_state.clientes_muestra)}")
 
@@ -200,7 +180,6 @@ def mostrar_tabla_con_toggle(df, nombre_base, mostrar_grafico=True):
     if df.empty:
         st.warning("No hay datos para este reporte")
         return
-    
     tab1, tab2 = st.tabs(["📊 Por Cantidad", "💰 Por Monto"])
     with tab1:
         if 'cantidad_operaciones' in df.columns:
@@ -217,27 +196,16 @@ def mostrar_tabla_con_toggle(df, nombre_base, mostrar_grafico=True):
                 fig = Visualizador.crear_barras(df_monto.reset_index(), df_monto.index.name if df_monto.index.name else 'index', 'monto_total', f'Top 20 - {nombre_base} (Por Monto)', df_monto.index.name if df_monto.index.name else 'Categoría', 'Monto Total')
                 st.plotly_chart(fig, use_container_width=True)
 
-def generar_y_mostrar_grafo(viz, df, col_list_name, origen_is_list=True):
-    if df.empty: return
-    df_red = []
-    for idx, row in df.head(30).iterrows():
-        elementos = row.get(col_list_name, [])
-        if isinstance(elementos, list) or isinstance(elementos, np.ndarray):
-            for item in list(elementos)[:15]:
-                if origen_is_list:
-                    df_red.append({'origen': str(item)[:20], 'destino': str(idx)[:20], 'monto': row.get('monto_total', 1)})
-                else:
-                    df_red.append({'origen': str(idx)[:20], 'destino': str(item)[:20], 'monto': row.get('monto_total', 1)})
-    
-    if df_red:
+def mostrar_grafo_relaciones(analizador, viz, tipo_muestra, col_origen, col_destino):
+    df_enlaces = analizador.obtener_enlaces_grafo(tipo_muestra, col_origen, col_destino)
+    if not df_enlaces.empty:
         st.subheader("🕸️ Red de Relaciones")
-        df_red_df = pd.DataFrame(df_red)
-        net = viz.crear_grafo_red(df_red_df, 'origen', 'destino', 'monto')
+        net = viz.crear_grafo_red(df_enlaces, col_origen, col_destino, 'monto')
         net.save_graph('temp_graph.html')
         with open('temp_graph.html', 'r', encoding='utf-8') as f:
             components.html(f.read(), height=850)
 
-def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_analisis=7):
+def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, tipo_filtro, dias_analisis):
     st.divider()
     if tipo_analisis == "Top 10 - Todas las Columnas":
         st.header("📊 Top 10 - Todas las Columnas")
@@ -254,23 +222,17 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
     elif tipo_analisis == "2. Vinculado Ejecutantes (para quién ejecutan)":
         st.header("🔗 Reporte 2: Vinculado Ejecutantes")
         mostrar_info_columnas(["destipclasifpartyrelacionado", "NroDocSol (muestra)", "TipPerOrd"])
-        tipo = st.radio("Filtrar por tipo", ["Todos", "Solo Personas", "Solo Empresas"], horizontal=True)
-        tipo_map = {"Todos": "todos", "Solo Personas": "persona", "Solo Empresas": "empresa"}
-        resultado = analizador.reporte_2_vinculado_ejecutantes(tipo_map[tipo])
+        resultado = analizador.reporte_2_vinculado_ejecutantes(tipo_filtro)
         mostrar_tabla_con_toggle(resultado, "Vinculado Ejecutantes")
     elif tipo_analisis == "3. Actividad Económica Beneficiarios (a quién ejecutan)":
         st.header("💼 Reporte 3: Actividad Económica Beneficiarios")
         mostrar_info_columnas(["OcupBen", "NroDocSol (muestra)", "TipPerOrd"])
-        tipo = st.radio("Filtrar por tipo", ["Todos", "Solo Personas", "Solo Empresas"], horizontal=True)
-        tipo_map = {"Todos": "todos", "Solo Personas": "persona", "Solo Empresas": "empresa"}
-        resultado = analizador.reporte_3_actividad_ben_ejecutantes(tipo_map[tipo])
+        resultado = analizador.reporte_3_actividad_ben_ejecutantes(tipo_filtro)
         mostrar_tabla_con_toggle(resultado, "Actividad Beneficiarios")
     elif tipo_analisis == "4. Tipo Operación Ejecutantes (mediante qué ejecutan)":
         st.header("📋 Reporte 4: Tipo Operación Ejecutantes")
         mostrar_info_columnas(["TipoOpe", "NroDocSol (muestra)", "TipPerOrd"])
-        tipo = st.radio("Filtrar por tipo", ["Todos", "Solo Personas", "Solo Empresas"], horizontal=True)
-        tipo_map = {"Todos": "todos", "Solo Personas": "persona", "Solo Empresas": "empresa"}
-        resultado = analizador.reporte_4_tipo_ope_ejecutantes(tipo_map[tipo])
+        resultado = analizador.reporte_4_tipo_ope_ejecutantes(tipo_filtro)
         mostrar_tabla_con_toggle(resultado, "Tipo Operación")
     elif tipo_analisis == "5. Beneficiarios en Común (ejecutantes)":
         st.header("👥 Reporte 5: Beneficiarios en Común")
@@ -278,7 +240,7 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         resultado = analizador.reporte_5_beneficiarios_comunes()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)
-            generar_y_mostrar_grafo(viz, resultado, 'ejecutantes', True)
+            mostrar_grafo_relaciones(analizador, viz, 'ejecutantes', 'NroDocSol', 'NroDocBen')
         else:
             st.info("No hay beneficiarios en común")
     elif tipo_analisis == "6. Cuentas Beneficiarias en Común (ejecutantes)":
@@ -287,15 +249,13 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         resultado = analizador.reporte_6_cuentas_ben_comunes()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)
-            generar_y_mostrar_grafo(viz, resultado, 'ejecutantes', True)
+            mostrar_grafo_relaciones(analizador, viz, 'ejecutantes', 'NroDocSol', 'CtaBen')
         else:
             st.info("No hay cuentas en común")
     elif tipo_analisis == "7. Actividad Económica Ben. en Efectivo (ejecutantes)":
         st.header("💵 Reporte 7: Actividad Ben. en Efectivo")
         mostrar_info_columnas(["OcupBen", "TipoFondo", "NroDocSol (muestra)"])
-        tipo = st.radio("Filtrar por tipo", ["Todos", "Solo Personas", "Solo Empresas"], horizontal=True)
-        tipo_map = {"Todos": "todos", "Solo Personas": "persona", "Solo Empresas": "empresa"}
-        resultado = analizador.reporte_7_actividad_ben_efectivo(tipo_map[tipo])
+        resultado = analizador.reporte_7_actividad_ben_efectivo(tipo_filtro)
         mostrar_tabla_con_toggle(resultado, "Actividad Ben. Efectivo")
     elif tipo_analisis == "8. Ordenantes en Común (ejecutantes)":
         st.header("👥 Reporte 8: Ordenantes en Común")
@@ -303,7 +263,7 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         resultado = analizador.reporte_8_ordenantes_comunes()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)
-            generar_y_mostrar_grafo(viz, resultado, 'ejecutantes', True)
+            mostrar_grafo_relaciones(analizador, viz, 'ejecutantes', 'NroDocSol', 'NroDocOrd')
         else:
             st.info("No hay ordenantes en común")
     elif tipo_analisis == "9. Actividad Más Común Ordenantes":
@@ -314,23 +274,17 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
     elif tipo_analisis == "10. Vinculado Ordenantes (a quién remiten)":
         st.header("🔗 Reporte 10: Vinculado Ordenantes")
         mostrar_info_columnas(["destipclasifpartyrelacionado", "NroDocOrd (muestra)", "TipPerOrd"])
-        tipo = st.radio("Filtrar por tipo", ["Todos", "Solo Personas", "Solo Empresas"], horizontal=True)
-        tipo_map = {"Todos": "todos", "Solo Personas": "persona", "Solo Empresas": "empresa"}
-        resultado = analizador.reporte_10_vinculado_ordenantes(tipo_map[tipo])
+        resultado = analizador.reporte_10_vinculado_ordenantes(tipo_filtro)
         mostrar_tabla_con_toggle(resultado, "Vinculado Ordenantes")
     elif tipo_analisis == "11. Actividad Económica Ben. (ordenantes remiten)":
         st.header("💼 Reporte 11: Actividad Ben. (Ordenantes)")
         mostrar_info_columnas(["OcupBen", "NroDocOrd (muestra)", "TipPerOrd"])
-        tipo = st.radio("Filtrar por tipo", ["Todos", "Solo Personas", "Solo Empresas"], horizontal=True)
-        tipo_map = {"Todos": "todos", "Solo Personas": "persona", "Solo Empresas": "empresa"}
-        resultado = analizador.reporte_11_actividad_ben_ordenantes(tipo_map[tipo])
+        resultado = analizador.reporte_11_actividad_ben_ordenantes(tipo_filtro)
         mostrar_tabla_con_toggle(resultado, "Actividad Ben.")
     elif tipo_analisis == "12. Tipo Operación Ordenantes (mediante qué remiten)":
         st.header("📋 Reporte 12: Tipo Operación Ordenantes")
         mostrar_info_columnas(["TipoOpe", "NroDocOrd (muestra)", "TipPerOrd"])
-        tipo = st.radio("Filtrar por tipo", ["Todos", "Solo Personas", "Solo Empresas"], horizontal=True)
-        tipo_map = {"Todos": "todos", "Solo Personas": "persona", "Solo Empresas": "empresa"}
-        resultado = analizador.reporte_12_tipo_ope_ordenantes(tipo_map[tipo])
+        resultado = analizador.reporte_12_tipo_ope_ordenantes(tipo_filtro)
         mostrar_tabla_con_toggle(resultado, "Tipo Operación")
     elif tipo_analisis == "13. Beneficiarios en Común (ordenantes)":
         st.header("👥 Reporte 13: Beneficiarios en Común (Ordenantes)")
@@ -338,7 +292,7 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         resultado = analizador.reporte_13_beneficiarios_comunes_ordenantes()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)
-            generar_y_mostrar_grafo(viz, resultado, 'ordenantes', True)
+            mostrar_grafo_relaciones(analizador, viz, 'ordenantes', 'NroDocOrd', 'NroDocBen')
         else:
             st.info("No hay beneficiarios en común")
     elif tipo_analisis == "14. Cuentas Beneficiarias en Común (ordenantes)":
@@ -347,15 +301,13 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         resultado = analizador.reporte_14_cuentas_ben_comunes_ordenantes()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)
-            generar_y_mostrar_grafo(viz, resultado, 'ordenantes', True)
+            mostrar_grafo_relaciones(analizador, viz, 'ordenantes', 'NroDocOrd', 'CtaBen')
         else:
             st.info("No hay cuentas en común")
     elif tipo_analisis == "15. Actividad Económica Ben. en Efectivo (ordenantes)":
         st.header("💵 Reporte 15: Actividad Ben. Efectivo (Ordenantes)")
         mostrar_info_columnas(["OcupBen", "TipoFondo", "NroDocOrd (muestra)"])
-        tipo = st.radio("Filtrar por tipo", ["Todos", "Solo Personas", "Solo Empresas"], horizontal=True)
-        tipo_map = {"Todos": "todos", "Solo Personas": "persona", "Solo Empresas": "empresa"}
-        resultado = analizador.reporte_15_actividad_ben_efectivo_ordenantes(tipo_map[tipo])
+        resultado = analizador.reporte_15_actividad_ben_efectivo_ordenantes(tipo_filtro)
         mostrar_tabla_con_toggle(resultado, "Actividad Ben. Efectivo")
     elif tipo_analisis == "16. Ejecutantes en Común (ordenantes)":
         st.header("👥 Reporte 16: Ejecutantes en Común (Ordenantes)")
@@ -363,7 +315,7 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         resultado = analizador.reporte_16_ejecutantes_comunes_ordenantes()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)
-            generar_y_mostrar_grafo(viz, resultado, 'ordenantes', True)
+            mostrar_grafo_relaciones(analizador, viz, 'ordenantes', 'NroDocOrd', 'NroDocSol')
         else:
             st.info("No hay ejecutantes en común")
     elif tipo_analisis == "17. Actividad Más Común Beneficiarios":
@@ -374,23 +326,17 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
     elif tipo_analisis == "18. Vinculado Beneficiarios (de quién reciben)":
         st.header("🔗 Reporte 18: Vinculado Beneficiarios")
         mostrar_info_columnas(["destipclasifpartyrelacionado", "NroDocBen (muestra)", "TipPerOrd"])
-        tipo = st.radio("Filtrar por tipo", ["Todos", "Solo Personas", "Solo Empresas"], horizontal=True)
-        tipo_map = {"Todos": "todos", "Solo Personas": "persona", "Solo Empresas": "empresa"}
-        resultado = analizador.reporte_18_vinculado_beneficiarios(tipo_map[tipo])
+        resultado = analizador.reporte_18_vinculado_beneficiarios(tipo_filtro)
         mostrar_tabla_con_toggle(resultado, "Vinculado Beneficiarios")
     elif tipo_analisis == "19. Actividad Económica Ord. (beneficiarios reciben de)":
         st.header("💼 Reporte 19: Actividad Ord. (Beneficiarios)")
         mostrar_info_columnas(["OcupOrd", "NroDocBen (muestra)", "TipPerOrd"])
-        tipo = st.radio("Filtrar por tipo", ["Todos", "Solo Personas", "Solo Empresas"], horizontal=True)
-        tipo_map = {"Todos": "todos", "Solo Personas": "persona", "Solo Empresas": "empresa"}
-        resultado = analizador.reporte_19_actividad_ord_beneficiarios(tipo_map[tipo])
+        resultado = analizador.reporte_19_actividad_ord_beneficiarios(tipo_filtro)
         mostrar_tabla_con_toggle(resultado, "Actividad Ord.")
     elif tipo_analisis == "20. Tipo Operación Beneficiarios (mediante qué reciben)":
         st.header("📋 Reporte 20: Tipo Operación Beneficiarios")
         mostrar_info_columnas(["TipoOpe", "NroDocBen (muestra)", "TipPerOrd"])
-        tipo = st.radio("Filtrar por tipo", ["Todos", "Solo Personas", "Solo Empresas"], horizontal=True)
-        tipo_map = {"Todos": "todos", "Solo Personas": "persona", "Solo Empresas": "empresa"}
-        resultado = analizador.reporte_20_tipo_ope_beneficiarios(tipo_map[tipo])
+        resultado = analizador.reporte_20_tipo_ope_beneficiarios(tipo_filtro)
         mostrar_tabla_con_toggle(resultado, "Tipo Operación")
     elif tipo_analisis == "21. Ordenantes en Común (beneficiarios)":
         st.header("👥 Reporte 21: Ordenantes en Común (Beneficiarios)")
@@ -398,7 +344,7 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         resultado = analizador.reporte_21_ordenantes_comunes_beneficiarios()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)
-            generar_y_mostrar_grafo(viz, resultado, 'beneficiarios', False)
+            mostrar_grafo_relaciones(analizador, viz, 'beneficiarios', 'NroDocOrd', 'NroDocBen')
         else:
             st.info("No hay ordenantes en común")
     elif tipo_analisis == "22. Cuentas Ordenantes en Común (beneficiarios)":
@@ -407,15 +353,13 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         resultado = analizador.reporte_22_cuentas_ord_comunes_beneficiarios()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)
-            generar_y_mostrar_grafo(viz, resultado, 'beneficiarios', False)
+            mostrar_grafo_relaciones(analizador, viz, 'beneficiarios', 'CtaOrd', 'NroDocBen')
         else:
             st.info("No hay cuentas en común")
     elif tipo_analisis == "23. Actividad Económica Ej. en Efectivo (beneficiarios)":
         st.header("💵 Reporte 23: Actividad Ej. Efectivo (Beneficiarios)")
         mostrar_info_columnas(["OcupSol", "TipoFondo", "NroDocBen (muestra)"])
-        tipo = st.radio("Filtrar por tipo", ["Todos", "Solo Personas", "Solo Empresas"], horizontal=True)
-        tipo_map = {"Todos": "todos", "Solo Personas": "persona", "Solo Empresas": "empresa"}
-        resultado = analizador.reporte_23_actividad_sol_efectivo_beneficiarios(tipo_map[tipo])
+        resultado = analizador.reporte_23_actividad_sol_efectivo_beneficiarios(tipo_filtro)
         mostrar_tabla_con_toggle(resultado, "Actividad Ej. Efectivo")
     elif tipo_analisis == "24. Ejecutantes en Común (beneficiarios)":
         st.header("👥 Reporte 24: Ejecutantes en Común (Beneficiarios)")
@@ -423,7 +367,7 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         resultado = analizador.reporte_24_ejecutantes_comunes_beneficiarios()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)
-            generar_y_mostrar_grafo(viz, resultado, 'beneficiarios', False)
+            mostrar_grafo_relaciones(analizador, viz, 'beneficiarios', 'NroDocSol', 'NroDocBen')
         else:
             st.info("No hay ejecutantes en común")
     elif tipo_analisis == "25. Consolidado Actividades (Ej+Ord+Ben)":
@@ -455,13 +399,15 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         resultados = analizador.reporte_27_porcentaje_efectivo()
         for rol, datos in resultados.items():
             with st.expander(f"📌 {rol.replace('_', ' ').title()}"):
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3, col4 = st.columns(4)
                 with col1:
-                    st.metric("Total Operaciones", f"{datos['total']:,}")
+                    st.metric("Total Ops / Efectivo", f"{datos['total_ops']:,} / {datos['ops_efec']:,}")
                 with col2:
-                    st.metric("Operaciones Efectivo", f"{datos['efectivo']:,}")
+                    st.metric("% Ops Efectivo", f"{datos['pct_ops']:.2f}%")
                 with col3:
-                    st.metric("Porcentaje", f"{datos['porcentaje']:.2f}%")
+                    st.metric("Total $ / Efectivo $", f"${datos['total_monto']:,.2f} / ${datos['monto_efec']:,.2f}")
+                with col4:
+                    st.metric("% Monto Efectivo", f"{datos['pct_monto']:.2f}%")
     elif tipo_analisis == "28. Plaza más Usada para Efectivo":
         st.header("🏙️ Reporte 28: Plaza Efectivo")
         mostrar_info_columnas(["CodUbigeo", "TipoFondo"])
@@ -639,6 +585,19 @@ def pagina_analisis():
     
     analisis_sel = st.selectbox("Seleccione el reporte", reportes, label_visibility="collapsed")
     
+    tipo_filtro_raw = "Todos"
+    reportes_con_filtro = [
+        "2. Vinculado Ejecutantes (para quién ejecutan)", "3. Actividad Económica Beneficiarios (a quién ejecutan)",
+        "4. Tipo Operación Ejecutantes (mediante qué ejecutan)", "7. Actividad Económica Ben. en Efectivo (ejecutantes)",
+        "10. Vinculado Ordenantes (a quién remiten)", "11. Actividad Económica Ben. (ordenantes remiten)",
+        "12. Tipo Operación Ordenantes (mediante qué remiten)", "15. Actividad Económica Ben. en Efectivo (ordenantes)",
+        "18. Vinculado Beneficiarios (de quién reciben)", "19. Actividad Económica Ord. (beneficiarios reciben de)",
+        "20. Tipo Operación Beneficiarios (mediante qué reciben)", "23. Actividad Económica Ej. en Efectivo (beneficiarios)"
+    ]
+    
+    if analisis_sel in reportes_con_filtro:
+        tipo_filtro_raw = st.radio("Filtrar por tipo", ["Todos", "Solo Personas", "Solo Empresas"], horizontal=True)
+        
     dias_analisis = 7
     if analisis_sel == "26. Post Transferencia Internacional":
         dias_analisis = st.slider("Días para analizar operaciones posteriores", 1, 30, 7)
@@ -647,7 +606,9 @@ def pagina_analisis():
         if st.session_state.df_analisis is not None and not st.session_state.df_analisis.empty:
             analizador = AnalizadorRO(st.session_state.df_analisis, st.session_state.clientes_muestra)
             viz = Visualizador()
-            ejecutar_analisis(analisis_sel, analizador, viz, st.session_state.df_analisis, dias_analisis)
+            tipo_map = {"Todos": "todos", "Solo Personas": "persona", "Solo Empresas": "empresa"}
+            tipo_filtro = tipo_map[tipo_filtro_raw]
+            ejecutar_analisis(analisis_sel, analizador, viz, st.session_state.df_analisis, tipo_filtro, dias_analisis)
         else:
             st.error("No hay datos para analizar.")
 
