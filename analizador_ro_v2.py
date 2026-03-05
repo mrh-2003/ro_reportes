@@ -34,10 +34,16 @@ class AnalizadorRO:
         return self.df[self.df['NroDocSol'].isin(self.clientes_muestra)]
     
     def filtrar_muestra_ordenantes(self):
-        return self.df[self.df['NroDocOrd'].isin(self.clientes_muestra)]
+        return self.df[
+            (self.df['NroDocOrd'].isin(self.clientes_muestra)) |
+            (self.df['RUC_Ord'].isin(self.clientes_muestra))
+        ]
     
     def filtrar_muestra_beneficiarios(self):
-        return self.df[self.df['NroDocBen'].isin(self.clientes_muestra)]
+        return self.df[
+            (self.df['NroDocBen'].isin(self.clientes_muestra)) |
+            (self.df['RUC_Ben'].isin(self.clientes_muestra))
+        ]
     
     def _generar_ranking(self, df, columna, rename_id='cantidad_operaciones', rename_monto='monto_total'):
         if df.empty or columna not in df.columns:
@@ -402,15 +408,18 @@ class AnalizadorRO:
         return self._generar_ranking(df, 'CodUbigeo')
     
     def reporte_29_actividad_sol_mineria(self):
-        df = self.df[self.df['OrigenFondos'].notna() & self.df['OrigenFondos'].str.contains('oro|auri|mine|mina', case=False)]
+        df = self.filtrar_muestra_ejecutantes()
+        df = df[df['OrigenFondos'].notna() & df['OrigenFondos'].str.contains('oro|auri|mine|mina', case=False)]
         return self._generar_ranking(df, 'OcupSol')
     
     def reporte_30_actividad_ord_mineria(self):
-        df = self.df[self.df['OrigenFondos'].notna() & self.df['OrigenFondos'].str.contains('oro|auri|mine|mina', case=False)]
+        df = self.filtrar_muestra_ordenantes()
+        df = df[df['OrigenFondos'].notna() & df['OrigenFondos'].str.contains('oro|auri|mine|mina', case=False)]
         return self._generar_ranking(df, 'OcupOrd')
     
     def reporte_31_actividad_ben_mineria(self):
-        df = self.df[self.df['OrigenFondos'].notna() & self.df['OrigenFondos'].str.contains('oro|auri|mine|mina', case=False)]
+        df = self.filtrar_muestra_beneficiarios()
+        df = df[df['OrigenFondos'].notna() & df['OrigenFondos'].str.contains('oro|auri|mine|mina', case=False)]
         return self._generar_ranking(df, 'OcupBen')
     
     def reporte_32_consolidado_mineria(self):
