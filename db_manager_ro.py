@@ -41,18 +41,16 @@ class DatabaseManager:
         return df
     
     def get_todos_documentos(self):
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT NroDocSol FROM operaciones WHERE NroDocSol IS NOT NULL
-            UNION
-            SELECT NroDocOrd FROM operaciones WHERE NroDocOrd IS NOT NULL
-            UNION
-            SELECT NroDocBen FROM operaciones WHERE NroDocBen IS NOT NULL
-        ''')
-        docs = [str(row[0]) for row in cursor.fetchall() if row[0]]
-        conn.close()
-        return docs
+        codigos = [
+                    "0XXXXX20","0XXXXX39","1XXXXX58","2XXXXX92","3XXXXX69",
+                    "4XXXXX46","4XXXXX53","4XXXXX08","4XXXXX04","4XXXXX54",
+                    "4XXXXX34","4XXXXX95","4XXXXX97","4XXXXX32","4XXXXX12",
+                    "4XXXXX22","7XXXXX73","7XXXXX50","7XXXXX17","201XXXXX429",
+                    "202XXXXX749","204XXXXX071","204XXXXX847","205XXXXX093",
+                    "205XXXXX613","205XXXXX371","206XXXXX587","206XXXXX998",
+                    "206XXXXX141","206XXXXX128","206XXXXX624","206XXXXX822"
+                    ]
+        return codigos
     
     def get_todas_operaciones(self, filtros=None):
         conn = self.get_connection()
