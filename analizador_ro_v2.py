@@ -327,10 +327,8 @@ class AnalizadorRO:
     def reporte_26_post_transf_internacional(self, dias=7):
         df_ben = self.filtrar_muestra_beneficiarios()
         df_recepcion = df_ben[df_ben['TipoOpe'] == 'Transferencias internacionales entre cuentas (recepción de fondos)'].copy()
-        
         if df_recepcion.empty or 'datetime' not in df_recepcion.columns:
             return pd.DataFrame(), pd.DataFrame(), {}
-        
         df_recepcion = df_recepcion.sort_values('datetime')
         ranking_ops = []
         ejemplos = []
