@@ -332,7 +332,7 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
             st.info("No hay beneficiarios en común")
     elif tipo_analisis == "14. Cuentas Beneficiarias en Común (ordenantes)":
         st.header("🏦 Reporte 14: Cuentas Ben. en Común (Ordenantes)")
-        mostrar_info_columnas(["CtaBen", "NroDocOrd (muestra)"])
+        mostrar_info_columnas(["CtaBen", "NroDocOrd (muestra)", "NombresBen", "ApPaternoBen", "ApMaternoBen", "NombresOrd", "ApPaternoOrd", "ApMaternoOrd"])
         resultado = analizador.reporte_14_cuentas_ben_comunes_ordenantes()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)
@@ -350,7 +350,7 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         with t3: mostrar_tabla_con_toggle(analizador.reporte_15_actividad_ben_efectivo_ordenantes('empresa'), "Persona Jurídica")
     elif tipo_analisis == "16. Ejecutantes en Común (ordenantes)":
         st.header("👥 Reporte 16: Ejecutantes en Común (Ordenantes)")
-        mostrar_info_columnas(["NroDocSol", "NroDocOrd (muestra)"])
+        mostrar_info_columnas(["NroDocSol", "NroDocOrd (muestra)", "NombresSol", "ApPaternoSol", "ApMaternoSol", "NombresOrd", "ApPaternoOrd", "ApMaternoOrd"])
         resultado = analizador.reporte_16_ejecutantes_comunes_ordenantes()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)
@@ -387,7 +387,7 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         with t3: mostrar_tabla_con_toggle(analizador.reporte_20_tipo_ope_beneficiarios('empresa'), "Persona Jurídica")
     elif tipo_analisis == "21. Ordenantes en Común (beneficiarios)":
         st.header("👥 Reporte 21: Ordenantes en Común (Beneficiarios)")
-        mostrar_info_columnas(["NroDocOrd", "NroDocBen (muestra)"])
+        mostrar_info_columnas(["NroDocOrd", "NroDocBen (muestra)", "NombresOrd", "ApPaternoOrd", "ApMaternoOrd", "NombresBen", "ApPaternoBen", "ApMaternoBen"])
         resultado = analizador.reporte_21_ordenantes_comunes_beneficiarios()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)
@@ -416,7 +416,7 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         with t3: mostrar_tabla_con_toggle(analizador.reporte_23_actividad_sol_efectivo_beneficiarios('empresa'), "Persona Jurídica")
     elif tipo_analisis == "24. Ejecutantes en Común (beneficiarios)":
         st.header("👥 Reporte 24: Ejecutantes en Común (Beneficiarios)")
-        mostrar_info_columnas(["NroDocSol", "NroDocBen (muestra)"])
+        mostrar_info_columnas(["NroDocSol", "NroDocBen (muestra)", "NombresSol", "ApPaternoSol", "ApMaternoSol", "NombresBen", "ApPaternoBen", "ApMaternoBen"])
         resultado = analizador.reporte_24_ejecutantes_comunes_beneficiarios()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)
