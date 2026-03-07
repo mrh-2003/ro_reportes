@@ -284,7 +284,7 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         mostrar_tabla_con_toggle(analizador.reporte_7_actividad_ben_efectivo('todos'), "Todos")
     elif tipo_analisis == "8. Ordenantes en Común (ejecutantes)":
         st.header("👥 Reporte 8: Ordenantes en Común")
-        mostrar_info_columnas(["NroDocOrd", "NroDocSol (muestra)"])
+        mostrar_info_columnas(["NroDocOrd", "NroDocSol (muestra)", "NombresOrd", "ApPaternoOrd", "ApMaternoOrd", "NombresSol", "ApPaternoSol", "ApMaternoSol"])
         resultado = analizador.reporte_8_ordenantes_comunes()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)

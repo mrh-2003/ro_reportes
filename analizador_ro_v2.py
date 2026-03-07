@@ -261,13 +261,69 @@ class AnalizadorRO:
         df = self.filtrar_muestra_ejecutantes()
         if df.empty:
             return pd.DataFrame()
-        resultado = df.groupby('NroDocOrd').agg({
-            'NroDocSol': lambda x: list(x.unique()),
-            'MontoOpe': 'sum', 'id_operacion': 'count',
-            'NombresOrd': lambda x: x.mode()[0] if not x.mode().empty else '',
+            
+        def get_full_name(r):
+            nombres = str(r.get('NombresSol', '')).strip() if pd.notna(r.get('NombresSol')) else ''
+            paterno = str(r.get('ApPaternoSol', '')).strip() if pd.notna(r.get('ApPaternoSol')) else ''
+            materno = str(r.get('ApMaternoSol', '')).strip() if pd.notna(r.get('ApMaternoSol')) else ''
+            
+            nombres = '' if nombres.lower() == 'nan' else nombres
+            paterno = '' if paterno.lower() == 'nan' else paterno
+            materno = '' if materno.lower() == 'nan' else materno
+            
+            parts = [x for x in [nombres, paterno, materno] if x]
+            return ' '.join(parts)
+            
+        def get_full_name_ord(r):
+            nombres = str(r.get('NombresOrd', '')).strip() if pd.notna(r.get('NombresOrd')) else ''
+            paterno = str(r.get('ApPaternoOrd', '')).strip() if pd.notna(r.get('ApPaternoOrd')) else ''
+            materno = str(r.get('ApMaternoOrd', '')).strip() if pd.notna(r.get('ApMaternoOrd')) else ''
+            
+            nombres = '' if nombres.lower() == 'nan' else nombres
+            paterno = '' if paterno.lower() == 'nan' else paterno
+            materno = '' if materno.lower() == 'nan' else materno
+            
+            parts = [x for x in [nombres, paterno, materno] if x]
+            return ' '.join(parts)
+            
+        def format_concat(doc, fullname):
+            doc = str(doc).strip() if pd.notna(doc) else ''
+            doc = '' if doc.lower() == 'nan' else doc
+            
+            if not doc and not fullname:
+                return np.nan
+            elif doc and fullname:
+                return f"{doc} - {fullname}"
+            else:
+                return doc if doc else fullname
+
+        df_temp = df.copy()
+        df_temp['fullname_sol'] = df_temp.apply(get_full_name, axis=1)
+        df_temp['fullname_ord'] = df_temp.apply(get_full_name_ord, axis=1)
+        df_temp['ejecutante_concat'] = df_temp.apply(lambda r: format_concat(r.get('NroDocSol'), r.get('fullname_sol')), axis=1)
+        
+        # Filtrar registros donde ejecutante está en blanco
+        df_temp = df_temp[df_temp['ejecutante_concat'].notna()]
+        
+        if df_temp.empty:
+            return pd.DataFrame()
+
+        resultado = df_temp.groupby('NroDocOrd').agg({
+            'fullname_ord': lambda x: x.mode()[0] if not x.mode().empty else '',
+            'NroDocSol': lambda x: list(x.dropna().unique()),
+            'ejecutante_concat': lambda x: list(x.unique()),
+            'MontoOpe': 'sum', 
+            'id_operacion': 'count',
             'OcupOrd': lambda x: x.mode()[0] if not x.mode().empty else ''
-        }).rename(columns={'NroDocSol': 'ejecutantes', 'MontoOpe': 'monto_total', 'id_operacion': 'cantidad_operaciones'})
-        resultado['num_ejecutantes'] = resultado['ejecutantes'].apply(len)
+        }).rename(columns={
+            'fullname_ord': 'nombre_completo_ordenante',
+            'NroDocSol': 'documentos_ejecutantes',
+            'ejecutante_concat': 'ejecutantes_detalles',
+            'MontoOpe': 'monto_total', 
+            'id_operacion': 'cantidad_operaciones'
+        })
+        
+        resultado['num_ejecutantes'] = resultado['ejecutantes_detalles'].apply(len)
         return resultado[resultado['num_ejecutantes'] > 1].sort_values('num_ejecutantes', ascending=False)
     
     def reporte_9_actividad_ordenantes(self):
