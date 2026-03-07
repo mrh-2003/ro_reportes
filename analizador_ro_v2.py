@@ -19,6 +19,13 @@ class AnalizadorRO:
                 )
             except:
                 self.df['datetime'] = self.df['FechaOp']
+                
+        # Normalizar documentos: Si NroDoc está vacío y RUC tiene valor, usar RUC
+        roles = [('NroDocSol', 'RUC_Sol'), ('NroDocOrd', 'RUC_Ord'), ('NroDocBen', 'RUC_Ben')]
+        for nro_col, ruc_col in roles:
+            if nro_col in self.df.columns and ruc_col in self.df.columns:
+                mask = self.df[nro_col].isna() | (self.df[nro_col].astype(str).str.strip() == '') | (self.df[nro_col].astype(str).str.lower() == 'nan')
+                self.df.loc[mask, nro_col] = self.df.loc[mask, ruc_col]
     
     def es_persona(self, tipo_per):
         if pd.isna(tipo_per) or tipo_per is None:
