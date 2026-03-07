@@ -437,16 +437,29 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         col1, col2 = st.columns(2)
         with col1:
             st.metric("Total Recepciones", stats['total_recepciones'])
-            st.metric("Con Operación Posterior", stats['total_con_posterior'])
         with col2:
-            if not ranking.empty:
-                fig = Visualizador.crear_pie(ranking.reset_index(), 'cantidad_operaciones', ranking.index.name, 'Operaciones Posteriores')
-                st.plotly_chart(fig, use_container_width=True)
+            st.metric("Con Operación Posterior", stats['total_con_posterior'])
+            
+        if not ranking.empty:
+            st.write("---")
+            fig = Visualizador.crear_pie(ranking.reset_index(), 'cantidad_operaciones', ranking.index.name, 'Operaciones Posteriores')
+            fig.update_layout(
+                height=700,
+                margin=dict(t=50, b=150, l=0, r=0),
+                legend=dict(
+                    orientation="h",
+                    yanchor="top",
+                    y=-0.15,
+                    xanchor="center",
+                    x=0.5
+                )
+            )
+            st.plotly_chart(fig, use_container_width=True)
         if not ranking.empty:
             st.subheader("Ranking de Operaciones")
             st.dataframe(ranking, use_container_width=True)
         if not ejemplos.empty:
-            st.subheader("Ejemplos Detallados (primeros 5)")
+            st.subheader("Detalle Completo de Operaciones y Flujos")
             st.dataframe(ejemplos, use_container_width=True, height=400)
     elif tipo_analisis == "27. Porcentaje de Efectivo por Rol":
         st.header("💵 Reporte 27: Porcentaje de Efectivo")
@@ -564,17 +577,33 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
         mostrar_tabla_con_toggle(resultado, "Países Envío")
     elif tipo_analisis == "40. Operaciones Entre Clientes Muestra":
         st.header("🔄 Reporte 40: Operaciones Entre Clientes Muestra")
-        mostrar_info_columnas(["NroDocSol", "NroDocOrd", "NroDocBen", "clientes muestra"])
-        resultado, stats = analizador.reporte_40_operaciones_entre_muestra()
+        mostrar_info_columnas(["NroDocSol", "NroDocOrd", "NroDocBen", "clientes muestra", "detalles_participantes"])
+        df_inter, df_intra, stats = analizador.reporte_40_operaciones_entre_muestra()
+        
+        st.subheader("👥 Operaciones Cruzadas (Diferentes Personas)")
         col1, col2 = st.columns(2)
         with col1:
-            st.metric("Total Operaciones", f"{stats['total_operaciones']:,}")
+            st.metric("Total Operaciones Cruzadas", f"{stats.get('total_operaciones_inter', 0):,}")
         with col2:
-            st.metric("Monto Total", f"${stats['monto_total']:,.2f}")
-        if not resultado.empty:
-            st.dataframe(resultado, use_container_width=True, height=400)
+            st.metric("Monto Total Cruzadas", f"${stats.get('monto_total_inter', 0):,.2f}")
+            
+        if not df_inter.empty:
+            st.dataframe(df_inter, use_container_width=True, height=400)
         else:
-            st.info("No hay operaciones entre clientes de la muestra")
+            st.info("No hay operaciones cruzadas entre diferentes clientes de la muestra")
+            
+        st.write("---")
+        st.subheader("👤 Operaciones Propias (Misma Persona)")
+        col3, col4 = st.columns(2)
+        with col3:
+            st.metric("Total Operaciones Propias", f"{stats.get('total_operaciones_intra', 0):,}")
+        with col4:
+            st.metric("Monto Total Propias", f"${stats.get('monto_total_intra', 0):,.2f}")
+            
+        if not df_intra.empty:
+            st.dataframe(df_intra, use_container_width=True, height=400)
+        else:
+            st.info("No hay operaciones hacia sí mismo (Misma Persona)")
 
 def pagina_analisis():
     st.title("📊 Análisis de Datos RO")

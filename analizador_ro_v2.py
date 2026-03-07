@@ -26,6 +26,40 @@ class AnalizadorRO:
             if nro_col in self.df.columns and ruc_col in self.df.columns:
                 mask = self.df[nro_col].isna() | (self.df[nro_col].astype(str).str.strip() == '') | (self.df[nro_col].astype(str).str.lower() == 'nan')
                 self.df.loc[mask, nro_col] = self.df.loc[mask, ruc_col]
+                
+        # Guardar copias raw para comprobaciones condicionales que evaluan estrictamente la muestra o RUC puros
+        for rol in ['Sol', 'Ord', 'Ben']:
+            if f'NroDoc{rol}' in self.df.columns:
+                self.df[f'_NroDoc{rol}_raw'] = self.df[f'NroDoc{rol}']
+                
+        def format_doc_name(row, rol):
+            doc = str(row.get(f'NroDoc{rol}', '')).strip() if pd.notna(row.get(f'NroDoc{rol}')) else ''
+            doc = '' if doc.lower() == 'nan' else doc
+            
+            nomb = str(row.get(f'Nombres{rol}', '')).strip() if pd.notna(row.get(f'Nombres{rol}')) else ''
+            pat = str(row.get(f'ApPaterno{rol}', '')).strip() if pd.notna(row.get(f'ApPaterno{rol}')) else ''
+            mat = str(row.get(f'ApMaterno{rol}', '')).strip() if pd.notna(row.get(f'ApMaterno{rol}')) else ''
+            
+            nomb = '' if nomb.lower() == 'nan' else nomb
+            pat = '' if pat.lower() == 'nan' else pat
+            mat = '' if mat.lower() == 'nan' else mat
+            
+            names = [x for x in [nomb, pat, mat] if x]
+            full = ' '.join(names)
+            
+            if doc and full:
+                return f"{doc} - {full}"
+            elif doc:
+                return doc
+            elif full:
+                return full
+            else:
+                return np.nan
+
+        # Sobrescribir las columnas base para extender el "Match de docuemntos" de forma universal por todo el sistema
+        for rol in ['Sol', 'Ord', 'Ben']:
+            if f'NroDoc{rol}' in self.df.columns:
+                self.df[f'NroDoc{rol}'] = self.df.apply(lambda r: format_doc_name(r, rol), axis=1)
     
     def es_persona(self, tipo_per):
         if pd.isna(tipo_per) or tipo_per is None:
@@ -56,17 +90,17 @@ class AnalizadorRO:
 
     
     def filtrar_muestra_ejecutantes(self):
-        return self.df[self.df['NroDocSol'].isin(self.clientes_muestra)]
+        return self.df[self.df['_NroDocSol_raw'].isin(self.clientes_muestra)]
     
     def filtrar_muestra_ordenantes(self):
         return self.df[
-            (self.df['NroDocOrd'].isin(self.clientes_muestra)) |
+            (self.df['_NroDocOrd_raw'].isin(self.clientes_muestra)) |
             (self.df['RUC_Ord'].isin(self.clientes_muestra))
         ]
     
     def filtrar_muestra_beneficiarios(self):
         return self.df[
-            (self.df['NroDocBen'].isin(self.clientes_muestra)) |
+            (self.df['_NroDocBen_raw'].isin(self.clientes_muestra)) |
             (self.df['RUC_Ben'].isin(self.clientes_muestra))
         ]
     
@@ -892,46 +926,113 @@ class AnalizadorRO:
         return final.sort_values('cantidad_operaciones', ascending=False)
     
     def reporte_26_post_transf_internacional(self, dias=7):
-        df_ben = self.filtrar_muestra_beneficiarios()
-        df_recepcion = df_ben[df_ben['TipoOpe'] == 'Transferencias internacionales entre cuentas (recepción de fondos)'].copy()
-        if df_recepcion.empty or 'datetime' not in df_recepcion.columns:
+        if 'datetime' not in self.df.columns:
             return pd.DataFrame(), pd.DataFrame(), {}
-        df_recepcion = df_recepcion.sort_values('datetime')
-        ranking_ops = []
-        ejemplos = []
-        
-        for idx, recep in df_recepcion.head(50).iterrows():
-            cliente = recep['NroDocBen']
-            fecha_recep = recep['datetime']
-            fecha_limite = fecha_recep + timedelta(days=dias)
             
-            ops_posteriores = self.df[
-                (self.df['NroDocBen'] == cliente) &
-                (self.df['datetime'] > fecha_recep) &
-                (self.df['datetime'] <= fecha_limite)
-            ]
-            
-            for _, op in ops_posteriores.iterrows():
-                ranking_ops.append(op['TipoOpe'])
-                if len(ejemplos) < 5:
-                    ejemplos.append({
-                        'cliente': cliente,
-                        'monto_recepcion': recep['MontoOpe'],
-                        'fecha_recepcion': recep['FechaOp'],
-                        'hora_recepcion': recep.get('HoraOp', ''),
-                        'operacion_posterior': op['TipoOpe'],
-                        'monto_posterior': op['MontoOpe'],
-                        'fecha_posterior': op['FechaOp'],
-                        'hora_posterior': op.get('HoraOp', '')
-                    })
+        df_base = self.df.dropna(subset=['datetime']).sort_values('datetime').reset_index(drop=True)
+        tipo_transferencia = "Transferencias internacionales entre cuentas (recepción de fondos)"
         
+        target_transfers = df_base[
+            (df_base['TipoOpe'] == tipo_transferencia) & 
+            (df_base['_NroDocBen_raw'].isin(self.clientes_muestra))
+        ]
+        
+        resultado = []
+        usados = set()
+        grupo = 1
+        
+        total_recepciones = 0
+        total_con_posterior = 0
+        
+        for idx in target_transfers.index:
+            if idx in usados:
+                continue
+                
+            fila_transf = df_base.loc[idx]
+            inicio = fila_transf['datetime']
+            fin = inicio + timedelta(days=dias)
+            doc_titular = fila_transf['NroDocBen']
+            
+            bloque = df_base[(df_base['datetime'] >= inicio) & (df_base['datetime'] <= fin)]
+            
+            operaciones_grupo = []
+            contador_recepciones = 1
+            tiene_posterior = False
+            
+            for j, row in bloque.iterrows():
+                if j in usados:
+                    continue
+                    
+                doc_ben = row.get('NroDocBen')
+                doc_ord = row.get('NroDocOrd')
+                doc_sol = row.get('NroDocSol')
+                
+                horas = (row['datetime'] - inicio).total_seconds() / 3600.0
+                es_transf = (row['TipoOpe'] == tipo_transferencia)
+                
+                if es_transf and doc_ben == doc_titular:
+                    if horas <= 24:
+                        obs = f"Recepcion ({contador_recepciones})"
+                        rol_participacion = "BENEFICIARIO"
+                        rol = "Transferencia_Base"
+                        contador_recepciones += 1
+                        total_recepciones += 1
+                    else:
+                        continue
+                elif doc_ord == doc_titular:
+                    obs = ""
+                    rol_participacion = "ORDENANTE"
+                    rol = "Operacion_Posterior"
+                    tiene_posterior = True
+                elif doc_sol == doc_titular:
+                    obs = ""
+                    rol_participacion = "SOLICITANTE"
+                    rol = "Operacion_Posterior"
+                    tiene_posterior = True
+                else:
+                    continue
+                    
+                usados.add(j)
+                
+                nueva = {
+                    'Obs': obs,
+                    'Grupo_ID': grupo,
+                    'FechaOp': row.get('FechaOp', ''),
+                    'HoraOp': row.get('HoraOp', ''),
+                    'Horas_Desde_Transf': round(horas, 2),
+                    'TipoOpe': row.get('TipoOpe', ''),
+                    'MontoOpe': row.get('MontoOpe', 0),
+                    'Rol': rol,
+                    'Rol_Participacion': rol_participacion,
+                    'Documento_Titular': doc_titular
+                }
+                operaciones_grupo.append(nueva)
+                
+            if len(operaciones_grupo) > 0:
+                resultado.extend(operaciones_grupo)
+                grupo += 1
+                if tiene_posterior:
+                    total_con_posterior += 1
+                    
+        df_resultado = pd.DataFrame(resultado)
         ranking = pd.DataFrame()
-        if ranking_ops:
-            ranking = pd.Series(ranking_ops).value_counts().to_frame('cantidad_operaciones')
-            ranking['porcentaje'] = (ranking['cantidad_operaciones'] / ranking['cantidad_operaciones'].sum() * 100).round(2)
         
-        stats = {'total_recepciones': len(df_recepcion), 'total_con_posterior': len(ejemplos), 'dias_analisis': dias}
-        return ranking, pd.DataFrame(ejemplos), stats
+        if not df_resultado.empty:
+            df_posteriores = df_resultado[df_resultado['Rol'] == 'Operacion_Posterior']
+            if not df_posteriores.empty:
+                ranking = df_posteriores['TipoOpe'].value_counts().to_frame('cantidad_operaciones')
+                ranking.index.name = 'Tipo Operación Posterior'
+                ranking['porcentaje'] = (ranking['cantidad_operaciones'] / ranking['cantidad_operaciones'].sum() * 100).round(2)
+            
+            df_resultado = df_resultado.sort_values(['Grupo_ID', 'Horas_Desde_Transf'])
+            
+        stats = {
+            'total_recepciones': total_recepciones, 
+            'total_con_posterior': total_con_posterior, 
+            'dias_analisis': dias
+        }
+        
+        return ranking, df_resultado, stats
     
     def reporte_27_porcentaje_efectivo(self):
         resultados = {}
@@ -1160,26 +1261,75 @@ class AnalizadorRO:
     
     def reporte_40_operaciones_entre_muestra(self):
         if not self.clientes_muestra:
-            return pd.DataFrame(), {}
-        df_entre = self.df[self.df['NroDocSol'].isin(self.clientes_muestra) | self.df['NroDocOrd'].isin(self.clientes_muestra) | self.df['NroDocBen'].isin(self.clientes_muestra)]
-        resultados = []
+            return pd.DataFrame(), pd.DataFrame(), {}
+            
+        def get_fn_sol(r):
+            parts = [str(r.get(c, '')).strip() for c in ['NombresSol', 'ApPaternoSol', 'ApMaternoSol'] if pd.notna(r.get(c))]
+            return ' '.join([p for p in parts if p.lower() != 'nan' and p])
+            
+        def get_fn_ord(r):
+            parts = [str(r.get(c, '')).strip() for c in ['NombresOrd', 'ApPaternoOrd', 'ApMaternoOrd'] if pd.notna(r.get(c))]
+            return ' '.join([p for p in parts if p.lower() != 'nan' and p])
+            
+        def get_fn_ben(r):
+            parts = [str(r.get(c, '')).strip() for c in ['NombresBen', 'ApPaternoBen', 'ApMaternoBen'] if pd.notna(r.get(c))]
+            return ' '.join([p for p in parts if p.lower() != 'nan' and p])
+
+        df_entre = self.df[self.df['_NroDocSol_raw'].isin(self.clientes_muestra) | self.df['_NroDocOrd_raw'].isin(self.clientes_muestra) | self.df['_NroDocBen_raw'].isin(self.clientes_muestra)]
+        resultados_inter = []
+        resultados_intra = []
+        
         for _, row in df_entre.iterrows():
             muestra_en_op = []
-            if row.get('NroDocSol') in self.clientes_muestra:
-                muestra_en_op.append(('Ejecutante', row.get('NroDocSol')))
-            if row.get('NroDocOrd') in self.clientes_muestra:
-                muestra_en_op.append(('Ordenante', row.get('NroDocOrd')))
-            if row.get('NroDocBen') in self.clientes_muestra:
-                muestra_en_op.append(('Beneficiario', row.get('NroDocBen')))
+            doc_nombres = []
+            docs_unicos = set()
+            
+            doc_sol_raw = row.get('_NroDocSol_raw')
+            if doc_sol_raw in self.clientes_muestra:
+                doc_sol = str(row.get('NroDocSol', ''))
+                muestra_en_op.append(('Ejecutante', doc_sol))
+                doc_nombres.append(f"Ejecutante: {doc_sol}")
+                docs_unicos.add(doc_sol)
+                
+            doc_ord_raw = row.get('_NroDocOrd_raw')
+            if doc_ord_raw in self.clientes_muestra:
+                doc_ord = str(row.get('NroDocOrd', ''))
+                muestra_en_op.append(('Ordenante', doc_ord))
+                doc_nombres.append(f"Ordenante: {doc_ord}")
+                docs_unicos.add(doc_ord)
+                
+            doc_ben_raw = row.get('_NroDocBen_raw')
+            if doc_ben_raw in self.clientes_muestra:
+                doc_ben = str(row.get('NroDocBen', ''))
+                muestra_en_op.append(('Beneficiario', doc_ben))
+                doc_nombres.append(f"Beneficiario: {doc_ben}")
+                docs_unicos.add(doc_ben)
+                
             if len(muestra_en_op) >= 2:
-                resultados.append({
+                es_misma_persona = len(docs_unicos) == 1
+                
+                ops_dict = {
                     'operacion_id': row.get('id_operacion'),
                     'tipo_operacion': row.get('TipoOpe'),
                     'monto': row.get('MontoOpe'),
                     'fecha': row.get('FechaOp'),
                     'relacion': ' <-> '.join([f"{r[0]}:{r[1]}" for r in muestra_en_op]),
+                    'detalles_participantes': ' | '.join(doc_nombres),
                     'num_clientes_muestra': len(muestra_en_op)
-                })
-        df_resultado = pd.DataFrame(resultados)
-        stats = {'total_operaciones': len(df_resultado), 'monto_total': df_resultado['monto'].sum() if not df_resultado.empty else 0}
-        return df_resultado, stats
+                }
+                
+                if es_misma_persona:
+                    resultados_intra.append(ops_dict)
+                else:
+                    resultados_inter.append(ops_dict)
+
+        df_inter = pd.DataFrame(resultados_inter)
+        df_intra = pd.DataFrame(resultados_intra)
+        
+        stats = {
+            'total_operaciones_inter': len(df_inter), 
+            'monto_total_inter': df_inter['monto'].sum() if not df_inter.empty else 0,
+            'total_operaciones_intra': len(df_intra),
+            'monto_total_intra': df_intra['monto'].sum() if not df_intra.empty else 0
+        }
+        return df_inter, df_intra, stats
