@@ -170,137 +170,39 @@ class AnalizadorRO:
         return self._generar_ranking(df, 'TipoOpe')
     
     def reporte_5_beneficiarios_comunes(self):
-        df = self.filtrar_muestra_ejecutantes()
-        if df.empty:
-            return pd.DataFrame()
-            
-        def get_full_name(r):
-            nombres = str(r.get('NombresSol', '')).strip() if pd.notna(r.get('NombresSol')) else ''
-            paterno = str(r.get('ApPaternoSol', '')).strip() if pd.notna(r.get('ApPaternoSol')) else ''
-            materno = str(r.get('ApMaternoSol', '')).strip() if pd.notna(r.get('ApMaternoSol')) else ''
-            
-            nombres = '' if nombres.lower() == 'nan' else nombres
-            paterno = '' if paterno.lower() == 'nan' else paterno
-            materno = '' if materno.lower() == 'nan' else materno
-            
-            parts = [x for x in [nombres, paterno, materno] if x]
-            return ' '.join(parts)
-            
-        def get_full_name_ben(r):
-            nombres = str(r.get('NombresBen', '')).strip() if pd.notna(r.get('NombresBen')) else ''
-            paterno = str(r.get('ApPaternoBen', '')).strip() if pd.notna(r.get('ApPaternoBen')) else ''
-            materno = str(r.get('ApMaternoBen', '')).strip() if pd.notna(r.get('ApMaternoBen')) else ''
-            
-            nombres = '' if nombres.lower() == 'nan' else nombres
-            paterno = '' if paterno.lower() == 'nan' else paterno
-            materno = '' if materno.lower() == 'nan' else materno
-            
-            parts = [x for x in [nombres, paterno, materno] if x]
-            return ' '.join(parts)
-            
-        def format_concat(doc, fullname):
-            doc = str(doc).strip() if pd.notna(doc) else ''
-            doc = '' if doc.lower() == 'nan' else doc
-            
-            if not doc and not fullname:
-                return np.nan
-            elif doc and fullname:
-                return f"{doc} - {fullname}"
-            else:
-                return doc if doc else fullname
-
-        df_temp = df.copy()
-        df_temp['fullname_sol'] = df_temp.apply(get_full_name, axis=1)
-        df_temp['fullname_ben'] = df_temp.apply(get_full_name_ben, axis=1)
-        df_temp['ejecutante_concat'] = df_temp.apply(lambda r: format_concat(r.get('NroDocSol'), r.get('fullname_sol')), axis=1)
-        
-        df_temp = df_temp[df_temp['ejecutante_concat'].notna()]
-        
-        if df_temp.empty:
-            return pd.DataFrame()
-
+        df_temp = self.filtrar_muestra_ejecutantes()
+        df_temp = df_temp[df_temp['NroDocBen'].notna() & df_temp['NroDocSol'].notna()].copy()
+        if df_temp.empty: return pd.DataFrame()
         resultado = df_temp.groupby('NroDocBen').agg({
-            'fullname_ben': lambda x: x.mode()[0] if not x.mode().empty else '',
-            'NroDocSol': lambda x: list(x.dropna().unique()),
-            'ejecutante_concat': lambda x: list(x.unique()),
-            'MontoOpe': 'sum', 
-            'id_operacion': 'count',
+            'NroDocBen': lambda x: x.mode()[0] if not x.mode().empty else '',
+            '_NroDocSol_raw': lambda x: list(x.dropna().unique()),
+            'NroDocSol': lambda x: list(x.unique()),
+            'MontoOpe': 'sum', 'id_operacion': 'count',
             'OcupBen': lambda x: x.mode()[0] if not x.mode().empty else ''
         }).rename(columns={
-            'fullname_ben': 'nombre_completo_beneficiario',
-            'NroDocSol': 'documentos_ejecutantes',
-            'ejecutante_concat': 'ejecutantes_detalles',
-            'MontoOpe': 'monto_total', 
-            'id_operacion': 'cantidad_operaciones'
+            'NroDocBen': 'nombre_completo_beneficiario',
+            '_NroDocSol_raw': 'documentos_ejecutantes',
+            'NroDocSol': 'ejecutantes_detalles',
+            'MontoOpe': 'monto_total', 'id_operacion': 'cantidad_operaciones'
         })
-        
         resultado['num_ejecutantes'] = resultado['ejecutantes_detalles'].apply(len)
         return resultado[resultado['num_ejecutantes'] > 1].sort_values('num_ejecutantes', ascending=False)
     
     def reporte_6_cuentas_ben_comunes(self):
-        df = self.filtrar_muestra_ejecutantes()
-        if df.empty or 'CtaBen' not in df.columns:
-            return pd.DataFrame()
-            
-        def get_full_name(r):
-            nombres = str(r.get('NombresSol', '')).strip() if pd.notna(r.get('NombresSol')) else ''
-            paterno = str(r.get('ApPaternoSol', '')).strip() if pd.notna(r.get('ApPaternoSol')) else ''
-            materno = str(r.get('ApMaternoSol', '')).strip() if pd.notna(r.get('ApMaternoSol')) else ''
-            
-            nombres = '' if nombres.lower() == 'nan' else nombres
-            paterno = '' if paterno.lower() == 'nan' else paterno
-            materno = '' if materno.lower() == 'nan' else materno
-            
-            parts = [x for x in [nombres, paterno, materno] if x]
-            return ' '.join(parts)
-            
-        def get_full_name_ben(r):
-            nombres = str(r.get('NombresBen', '')).strip() if pd.notna(r.get('NombresBen')) else ''
-            paterno = str(r.get('ApPaternoBen', '')).strip() if pd.notna(r.get('ApPaternoBen')) else ''
-            materno = str(r.get('ApMaternoBen', '')).strip() if pd.notna(r.get('ApMaternoBen')) else ''
-            
-            nombres = '' if nombres.lower() == 'nan' else nombres
-            paterno = '' if paterno.lower() == 'nan' else paterno
-            materno = '' if materno.lower() == 'nan' else materno
-            
-            parts = [x for x in [nombres, paterno, materno] if x]
-            return ' '.join(parts)
-            
-        def format_concat(doc, fullname):
-            doc = str(doc).strip() if pd.notna(doc) else ''
-            doc = '' if doc.lower() == 'nan' else doc
-            
-            if not doc and not fullname:
-                return np.nan
-            elif doc and fullname:
-                return f"{doc} - {fullname}"
-            else:
-                return doc if doc else fullname
-
-        df_temp = df[df['CtaBen'].notna()].copy()
-        df_temp['fullname_sol'] = df_temp.apply(get_full_name, axis=1)
-        df_temp['fullname_ben'] = df_temp.apply(get_full_name_ben, axis=1)
-        df_temp['ejecutante_concat'] = df_temp.apply(lambda r: format_concat(r.get('NroDocSol'), r.get('fullname_sol')), axis=1)
-        
-        df_temp = df_temp[df_temp['ejecutante_concat'].notna()]
-        
-        if df_temp.empty:
-            return pd.DataFrame()
-
+        df_temp = self.filtrar_muestra_ejecutantes()
+        df_temp = df_temp[df_temp['CtaBen'].notna() & df_temp['NroDocSol'].notna()].copy()
+        if df_temp.empty: return pd.DataFrame()
         resultado = df_temp.groupby('CtaBen').agg({
-            'fullname_ben': lambda x: x.mode()[0] if not x.mode().empty else '',
-            'NroDocSol': lambda x: list(x.dropna().unique()),
-            'ejecutante_concat': lambda x: list(x.unique()),
-            'MontoOpe': 'sum', 
-            'id_operacion': 'count'
+            'NroDocBen': lambda x: x.mode()[0] if not x.mode().empty else '',
+            '_NroDocSol_raw': lambda x: list(x.dropna().unique()),
+            'NroDocSol': lambda x: list(x.unique()),
+            'MontoOpe': 'sum', 'id_operacion': 'count'
         }).rename(columns={
-            'fullname_ben': 'nombre_completo_beneficiario',
-            'NroDocSol': 'documentos_ejecutantes',
-            'ejecutante_concat': 'ejecutantes_detalles',
-            'MontoOpe': 'monto_total', 
-            'id_operacion': 'cantidad_operaciones'
+            'NroDocBen': 'nombre_completo_beneficiario',
+            '_NroDocSol_raw': 'documentos_ejecutantes',
+            'NroDocSol': 'ejecutantes_detalles',
+            'MontoOpe': 'monto_total', 'id_operacion': 'cantidad_operaciones'
         })
-        
         resultado['num_ejecutantes'] = resultado['ejecutantes_detalles'].apply(len)
         return resultado[resultado['num_ejecutantes'] > 1].sort_values('num_ejecutantes', ascending=False)
     
@@ -310,71 +212,21 @@ class AnalizadorRO:
         return self._generar_ranking(df, 'OcupBen')
     
     def reporte_8_ordenantes_comunes(self):
-        df = self.filtrar_muestra_ejecutantes()
-        if df.empty:
-            return pd.DataFrame()
-            
-        def get_full_name(r):
-            nombres = str(r.get('NombresSol', '')).strip() if pd.notna(r.get('NombresSol')) else ''
-            paterno = str(r.get('ApPaternoSol', '')).strip() if pd.notna(r.get('ApPaternoSol')) else ''
-            materno = str(r.get('ApMaternoSol', '')).strip() if pd.notna(r.get('ApMaternoSol')) else ''
-            
-            nombres = '' if nombres.lower() == 'nan' else nombres
-            paterno = '' if paterno.lower() == 'nan' else paterno
-            materno = '' if materno.lower() == 'nan' else materno
-            
-            parts = [x for x in [nombres, paterno, materno] if x]
-            return ' '.join(parts)
-            
-        def get_full_name_ord(r):
-            nombres = str(r.get('NombresOrd', '')).strip() if pd.notna(r.get('NombresOrd')) else ''
-            paterno = str(r.get('ApPaternoOrd', '')).strip() if pd.notna(r.get('ApPaternoOrd')) else ''
-            materno = str(r.get('ApMaternoOrd', '')).strip() if pd.notna(r.get('ApMaternoOrd')) else ''
-            
-            nombres = '' if nombres.lower() == 'nan' else nombres
-            paterno = '' if paterno.lower() == 'nan' else paterno
-            materno = '' if materno.lower() == 'nan' else materno
-            
-            parts = [x for x in [nombres, paterno, materno] if x]
-            return ' '.join(parts)
-            
-        def format_concat(doc, fullname):
-            doc = str(doc).strip() if pd.notna(doc) else ''
-            doc = '' if doc.lower() == 'nan' else doc
-            
-            if not doc and not fullname:
-                return np.nan
-            elif doc and fullname:
-                return f"{doc} - {fullname}"
-            else:
-                return doc if doc else fullname
-
-        df_temp = df.copy()
-        df_temp['fullname_sol'] = df_temp.apply(get_full_name, axis=1)
-        df_temp['fullname_ord'] = df_temp.apply(get_full_name_ord, axis=1)
-        df_temp['ejecutante_concat'] = df_temp.apply(lambda r: format_concat(r.get('NroDocSol'), r.get('fullname_sol')), axis=1)
-        
-        # Filtrar registros donde ejecutante está en blanco
-        df_temp = df_temp[df_temp['ejecutante_concat'].notna()]
-        
-        if df_temp.empty:
-            return pd.DataFrame()
-
+        df_temp = self.filtrar_muestra_ordenantes()
+        df_temp = df_temp[df_temp['NroDocOrd'].notna() & df_temp['NroDocSol'].notna()].copy()
+        if df_temp.empty: return pd.DataFrame()
         resultado = df_temp.groupby('NroDocOrd').agg({
-            'fullname_ord': lambda x: x.mode()[0] if not x.mode().empty else '',
-            'NroDocSol': lambda x: list(x.dropna().unique()),
-            'ejecutante_concat': lambda x: list(x.unique()),
-            'MontoOpe': 'sum', 
-            'id_operacion': 'count',
+            'NroDocOrd': lambda x: x.mode()[0] if not x.mode().empty else '',
+            '_NroDocSol_raw': lambda x: list(x.dropna().unique()),
+            'NroDocSol': lambda x: list(x.unique()),
+            'MontoOpe': 'sum', 'id_operacion': 'count',
             'OcupOrd': lambda x: x.mode()[0] if not x.mode().empty else ''
         }).rename(columns={
-            'fullname_ord': 'nombre_completo_ordenante',
-            'NroDocSol': 'documentos_ejecutantes',
-            'ejecutante_concat': 'ejecutantes_detalles',
-            'MontoOpe': 'monto_total', 
-            'id_operacion': 'cantidad_operaciones'
+            'NroDocOrd': 'nombre_completo_ordenante',
+            '_NroDocSol_raw': 'documentos_ejecutantes',
+            'NroDocSol': 'ejecutantes_detalles',
+            'MontoOpe': 'monto_total', 'id_operacion': 'cantidad_operaciones'
         })
-        
         resultado['num_ejecutantes'] = resultado['ejecutantes_detalles'].apply(len)
         return resultado[resultado['num_ejecutantes'] > 1].sort_values('num_ejecutantes', ascending=False)
     
@@ -571,70 +423,21 @@ class AnalizadorRO:
         return ranking
     
     def reporte_16_ejecutantes_comunes_ordenantes(self):
-        df = self.filtrar_muestra_ordenantes()
-        if df.empty:
-            return pd.DataFrame()
-            
-        def get_full_name_sol(r):
-            nombres = str(r.get('NombresSol', '')).strip() if pd.notna(r.get('NombresSol')) else ''
-            paterno = str(r.get('ApPaternoSol', '')).strip() if pd.notna(r.get('ApPaternoSol')) else ''
-            materno = str(r.get('ApMaternoSol', '')).strip() if pd.notna(r.get('ApMaternoSol')) else ''
-            
-            nombres = '' if nombres.lower() == 'nan' else nombres
-            paterno = '' if paterno.lower() == 'nan' else paterno
-            materno = '' if materno.lower() == 'nan' else materno
-            
-            parts = [x for x in [nombres, paterno, materno] if x]
-            return ' '.join(parts)
-            
-        def get_full_name_ord(r):
-            nombres = str(r.get('NombresOrd', '')).strip() if pd.notna(r.get('NombresOrd')) else ''
-            paterno = str(r.get('ApPaternoOrd', '')).strip() if pd.notna(r.get('ApPaternoOrd')) else ''
-            materno = str(r.get('ApMaternoOrd', '')).strip() if pd.notna(r.get('ApMaternoOrd')) else ''
-            
-            nombres = '' if nombres.lower() == 'nan' else nombres
-            paterno = '' if paterno.lower() == 'nan' else paterno
-            materno = '' if materno.lower() == 'nan' else materno
-            
-            parts = [x for x in [nombres, paterno, materno] if x]
-            return ' '.join(parts)
-            
-        def format_concat(doc, fullname):
-            doc = str(doc).strip() if pd.notna(doc) else ''
-            doc = '' if doc.lower() == 'nan' else doc
-            
-            if not doc and not fullname:
-                return np.nan
-            elif doc and fullname:
-                return f"{doc} - {fullname}"
-            else:
-                return doc if doc else fullname
-
-        df_temp = df.copy()
-        df_temp['fullname_sol'] = df_temp.apply(get_full_name_sol, axis=1)
-        df_temp['fullname_ord'] = df_temp.apply(get_full_name_ord, axis=1)
-        df_temp['ordenante_concat'] = df_temp.apply(lambda r: format_concat(r.get('NroDocOrd'), r.get('fullname_ord')), axis=1)
-        
-        df_temp = df_temp[df_temp['ordenante_concat'].notna()]
-        
-        if df_temp.empty:
-            return pd.DataFrame()
-
+        df_temp = self.filtrar_muestra_ordenantes()
+        df_temp = df_temp[df_temp['NroDocSol'].notna() & df_temp['NroDocOrd'].notna()].copy()
+        if df_temp.empty: return pd.DataFrame()
         resultado = df_temp.groupby('NroDocSol').agg({
-            'fullname_sol': lambda x: x.mode()[0] if not x.mode().empty else '',
-            'NroDocOrd': lambda x: list(x.dropna().unique()),
-            'ordenante_concat': lambda x: list(x.unique()),
-            'MontoOpe': 'sum', 
-            'id_operacion': 'count',
+            'NroDocSol': lambda x: x.mode()[0] if not x.mode().empty else '',
+            '_NroDocOrd_raw': lambda x: list(x.dropna().unique()),
+            'NroDocOrd': lambda x: list(x.unique()),
+            'MontoOpe': 'sum', 'id_operacion': 'count',
             'OcupSol': lambda x: x.mode()[0] if not x.mode().empty else ''
         }).rename(columns={
-            'fullname_sol': 'nombre_completo_ejecutante',
-            'NroDocOrd': 'documentos_ordenantes',
-            'ordenante_concat': 'ordenantes_detalles',
-            'MontoOpe': 'monto_total', 
-            'id_operacion': 'cantidad_operaciones'
+            'NroDocSol': 'nombre_completo_ejecutante',
+            '_NroDocOrd_raw': 'documentos_ordenantes',
+            'NroDocOrd': 'ordenantes_detalles',
+            'MontoOpe': 'monto_total', 'id_operacion': 'cantidad_operaciones'
         })
-        
         resultado['num_ordenantes'] = resultado['ordenantes_detalles'].apply(len)
         return resultado[resultado['num_ordenantes'] > 1].sort_values('num_ordenantes', ascending=False)
     
@@ -682,138 +485,39 @@ class AnalizadorRO:
         return self._generar_ranking(df, 'TipoOpe')
     
     def reporte_21_ordenantes_comunes_beneficiarios(self):
-        df = self.filtrar_muestra_beneficiarios()
-        if df.empty:
-            return pd.DataFrame()
-            
-        def get_full_name_ord(r):
-            nombres = str(r.get('NombresOrd', '')).strip() if pd.notna(r.get('NombresOrd')) else ''
-            paterno = str(r.get('ApPaternoOrd', '')).strip() if pd.notna(r.get('ApPaternoOrd')) else ''
-            materno = str(r.get('ApMaternoOrd', '')).strip() if pd.notna(r.get('ApMaternoOrd')) else ''
-            
-            nombres = '' if nombres.lower() == 'nan' else nombres
-            paterno = '' if paterno.lower() == 'nan' else paterno
-            materno = '' if materno.lower() == 'nan' else materno
-            
-            parts = [x for x in [nombres, paterno, materno] if x]
-            return ' '.join(parts)
-            
-        def get_full_name_ben(r):
-            nombres = str(r.get('NombresBen', '')).strip() if pd.notna(r.get('NombresBen')) else ''
-            paterno = str(r.get('ApPaternoBen', '')).strip() if pd.notna(r.get('ApPaternoBen')) else ''
-            materno = str(r.get('ApMaternoBen', '')).strip() if pd.notna(r.get('ApMaternoBen')) else ''
-            
-            nombres = '' if nombres.lower() == 'nan' else nombres
-            paterno = '' if paterno.lower() == 'nan' else paterno
-            materno = '' if materno.lower() == 'nan' else materno
-            
-            parts = [x for x in [nombres, paterno, materno] if x]
-            return ' '.join(parts)
-            
-        def format_concat(doc, fullname):
-            doc = str(doc).strip() if pd.notna(doc) else ''
-            doc = '' if doc.lower() == 'nan' else doc
-            
-            if not doc and not fullname:
-                return np.nan
-            elif doc and fullname:
-                return f"{doc} - {fullname}"
-            else:
-                return doc if doc else fullname
-
-        df_temp = df.copy()
-        df_temp['fullname_ord'] = df_temp.apply(get_full_name_ord, axis=1)
-        df_temp['fullname_ben'] = df_temp.apply(get_full_name_ben, axis=1)
-        df_temp['beneficiario_concat'] = df_temp.apply(lambda r: format_concat(r.get('NroDocBen'), r.get('fullname_ben')), axis=1)
-        
-        df_temp = df_temp[df_temp['beneficiario_concat'].notna()]
-        
-        if df_temp.empty:
-            return pd.DataFrame()
-
+        df_temp = self.filtrar_muestra_beneficiarios()
+        df_temp = df_temp[df_temp['NroDocOrd'].notna() & df_temp['NroDocBen'].notna()].copy()
+        if df_temp.empty: return pd.DataFrame()
         resultado = df_temp.groupby('NroDocOrd').agg({
-            'fullname_ord': lambda x: x.mode()[0] if not x.mode().empty else '',
-            'NroDocBen': lambda x: list(x.dropna().unique()),
-            'beneficiario_concat': lambda x: list(x.unique()),
-            'MontoOpe': 'sum', 
-            'id_operacion': 'count',
+            'NroDocOrd': lambda x: x.mode()[0] if not x.mode().empty else '',
+            '_NroDocBen_raw': lambda x: list(x.dropna().unique()),
+            'NroDocBen': lambda x: list(x.unique()),
+            'MontoOpe': 'sum', 'id_operacion': 'count',
             'OcupOrd': lambda x: x.mode()[0] if not x.mode().empty else ''
         }).rename(columns={
-            'fullname_ord': 'nombre_completo_ordenante',
-            'NroDocBen': 'documentos_beneficiarios',
-            'beneficiario_concat': 'beneficiarios_detalles',
-            'MontoOpe': 'monto_total', 
-            'id_operacion': 'cantidad_operaciones'
+            'NroDocOrd': 'nombre_completo_ordenante',
+            '_NroDocBen_raw': 'documentos_beneficiarios',
+            'NroDocBen': 'beneficiarios_detalles',
+            'MontoOpe': 'monto_total', 'id_operacion': 'cantidad_operaciones'
         })
-        
         resultado['num_beneficiarios'] = resultado['beneficiarios_detalles'].apply(len)
         return resultado[resultado['num_beneficiarios'] > 1].sort_values('num_beneficiarios', ascending=False)
     
     def reporte_22_cuentas_ord_comunes_beneficiarios(self):
-        df = self.filtrar_muestra_beneficiarios()
-        if df.empty or 'CtaOrd' not in df.columns:
-            return pd.DataFrame()
-            
-        def get_full_name_ord(r):
-            nombres = str(r.get('NombresOrd', '')).strip() if pd.notna(r.get('NombresOrd')) else ''
-            paterno = str(r.get('ApPaternoOrd', '')).strip() if pd.notna(r.get('ApPaternoOrd')) else ''
-            materno = str(r.get('ApMaternoOrd', '')).strip() if pd.notna(r.get('ApMaternoOrd')) else ''
-            
-            nombres = '' if nombres.lower() == 'nan' else nombres
-            paterno = '' if paterno.lower() == 'nan' else paterno
-            materno = '' if materno.lower() == 'nan' else materno
-            
-            parts = [x for x in [nombres, paterno, materno] if x]
-            return ' '.join(parts)
-            
-        def get_full_name_ben(r):
-            nombres = str(r.get('NombresBen', '')).strip() if pd.notna(r.get('NombresBen')) else ''
-            paterno = str(r.get('ApPaternoBen', '')).strip() if pd.notna(r.get('ApPaternoBen')) else ''
-            materno = str(r.get('ApMaternoBen', '')).strip() if pd.notna(r.get('ApMaternoBen')) else ''
-            
-            nombres = '' if nombres.lower() == 'nan' else nombres
-            paterno = '' if paterno.lower() == 'nan' else paterno
-            materno = '' if materno.lower() == 'nan' else materno
-            
-            parts = [x for x in [nombres, paterno, materno] if x]
-            return ' '.join(parts)
-            
-        def format_concat(doc, fullname):
-            doc = str(doc).strip() if pd.notna(doc) else ''
-            doc = '' if doc.lower() == 'nan' else doc
-            
-            if not doc and not fullname:
-                return np.nan
-            elif doc and fullname:
-                return f"{doc} - {fullname}"
-            else:
-                return doc if doc else fullname
-
-        df_temp = df[df['CtaOrd'].notna()].copy()
-        df_temp['fullname_ord'] = df_temp.apply(get_full_name_ord, axis=1)
-        df_temp['fullname_ben'] = df_temp.apply(get_full_name_ben, axis=1)
-        df_temp['beneficiario_concat'] = df_temp.apply(lambda r: format_concat(r.get('NroDocBen'), r.get('fullname_ben')), axis=1)
-        
-        # Filtrar registros donde beneficiario está en blanco
-        df_temp = df_temp[df_temp['beneficiario_concat'].notna()]
-        
-        if df_temp.empty:
-            return pd.DataFrame()
-
+        df_temp = self.filtrar_muestra_beneficiarios()
+        df_temp = df_temp[df_temp['CtaOrd'].notna() & df_temp['NroDocBen'].notna()].copy()
+        if df_temp.empty: return pd.DataFrame()
         resultado = df_temp.groupby('CtaOrd').agg({
-            'fullname_ord': lambda x: x.mode()[0] if not x.mode().empty else '',
-            'NroDocBen': lambda x: list(x.dropna().unique()),
-            'beneficiario_concat': lambda x: list(x.unique()),
-            'MontoOpe': 'sum', 
-            'id_operacion': 'count'
+            'NroDocOrd': lambda x: x.mode()[0] if not x.mode().empty else '',
+            '_NroDocBen_raw': lambda x: list(x.dropna().unique()),
+            'NroDocBen': lambda x: list(x.unique()),
+            'MontoOpe': 'sum', 'id_operacion': 'count'
         }).rename(columns={
-            'fullname_ord': 'nombre_completo_ordenante',
-            'NroDocBen': 'documentos_beneficiarios',
-            'beneficiario_concat': 'beneficiarios_detalles',
-            'MontoOpe': 'monto_total', 
-            'id_operacion': 'cantidad_operaciones'
+            'NroDocOrd': 'nombre_completo_ordenante',
+            '_NroDocBen_raw': 'documentos_beneficiarios',
+            'NroDocBen': 'beneficiarios_detalles',
+            'MontoOpe': 'monto_total', 'id_operacion': 'cantidad_operaciones'
         })
-        
         resultado['num_beneficiarios'] = resultado['beneficiarios_detalles'].apply(len)
         return resultado[resultado['num_beneficiarios'] > 1].sort_values('num_beneficiarios', ascending=False)
     
@@ -824,70 +528,21 @@ class AnalizadorRO:
         return self._generar_ranking(df, 'OcupSol')
     
     def reporte_24_ejecutantes_comunes_beneficiarios(self):
-        df = self.filtrar_muestra_beneficiarios()
-        if df.empty:
-            return pd.DataFrame()
-            
-        def get_full_name_sol(r):
-            nombres = str(r.get('NombresSol', '')).strip() if pd.notna(r.get('NombresSol')) else ''
-            paterno = str(r.get('ApPaternoSol', '')).strip() if pd.notna(r.get('ApPaternoSol')) else ''
-            materno = str(r.get('ApMaternoSol', '')).strip() if pd.notna(r.get('ApMaternoSol')) else ''
-            
-            nombres = '' if nombres.lower() == 'nan' else nombres
-            paterno = '' if paterno.lower() == 'nan' else paterno
-            materno = '' if materno.lower() == 'nan' else materno
-            
-            parts = [x for x in [nombres, paterno, materno] if x]
-            return ' '.join(parts)
-            
-        def get_full_name_ben(r):
-            nombres = str(r.get('NombresBen', '')).strip() if pd.notna(r.get('NombresBen')) else ''
-            paterno = str(r.get('ApPaternoBen', '')).strip() if pd.notna(r.get('ApPaternoBen')) else ''
-            materno = str(r.get('ApMaternoBen', '')).strip() if pd.notna(r.get('ApMaternoBen')) else ''
-            
-            nombres = '' if nombres.lower() == 'nan' else nombres
-            paterno = '' if paterno.lower() == 'nan' else paterno
-            materno = '' if materno.lower() == 'nan' else materno
-            
-            parts = [x for x in [nombres, paterno, materno] if x]
-            return ' '.join(parts)
-            
-        def format_concat(doc, fullname):
-            doc = str(doc).strip() if pd.notna(doc) else ''
-            doc = '' if doc.lower() == 'nan' else doc
-            
-            if not doc and not fullname:
-                return np.nan
-            elif doc and fullname:
-                return f"{doc} - {fullname}"
-            else:
-                return doc if doc else fullname
-
-        df_temp = df.copy()
-        df_temp['fullname_sol'] = df_temp.apply(get_full_name_sol, axis=1)
-        df_temp['fullname_ben'] = df_temp.apply(get_full_name_ben, axis=1)
-        df_temp['beneficiario_concat'] = df_temp.apply(lambda r: format_concat(r.get('NroDocBen'), r.get('fullname_ben')), axis=1)
-        
-        df_temp = df_temp[df_temp['beneficiario_concat'].notna()]
-        
-        if df_temp.empty:
-            return pd.DataFrame()
-
+        df_temp = self.filtrar_muestra_beneficiarios()
+        df_temp = df_temp[df_temp['NroDocSol'].notna() & df_temp['NroDocBen'].notna()].copy()
+        if df_temp.empty: return pd.DataFrame()
         resultado = df_temp.groupby('NroDocSol').agg({
-            'fullname_sol': lambda x: x.mode()[0] if not x.mode().empty else '',
-            'NroDocBen': lambda x: list(x.dropna().unique()),
-            'beneficiario_concat': lambda x: list(x.unique()),
-            'MontoOpe': 'sum', 
-            'id_operacion': 'count',
+            'NroDocSol': lambda x: x.mode()[0] if not x.mode().empty else '',
+            '_NroDocBen_raw': lambda x: list(x.dropna().unique()),
+            'NroDocBen': lambda x: list(x.unique()),
+            'MontoOpe': 'sum', 'id_operacion': 'count',
             'OcupSol': lambda x: x.mode()[0] if not x.mode().empty else ''
         }).rename(columns={
-            'fullname_sol': 'nombre_completo_ejecutante',
-            'NroDocBen': 'documentos_beneficiarios',
-            'beneficiario_concat': 'beneficiarios_detalles',
-            'MontoOpe': 'monto_total', 
-            'id_operacion': 'cantidad_operaciones'
+            'NroDocSol': 'nombre_completo_ejecutante',
+            '_NroDocBen_raw': 'documentos_beneficiarios',
+            'NroDocBen': 'beneficiarios_detalles',
+            'MontoOpe': 'monto_total', 'id_operacion': 'cantidad_operaciones'
         })
-        
         resultado['num_beneficiarios'] = resultado['beneficiarios_detalles'].apply(len)
         return resultado[resultado['num_beneficiarios'] > 1].sort_values('num_beneficiarios', ascending=False)
     
