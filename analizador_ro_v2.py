@@ -76,59 +76,178 @@ class AnalizadorRO:
     
     def reporte_2_vinculado_ejecutantes(self, tipo='todos'):
         df = self.filtrar_muestra_ejecutantes()
-        if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
-        elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
         return self._generar_ranking(df, 'destipclasifpartyrelacionado')
     
     def reporte_3_actividad_ben_ejecutantes(self, tipo='todos'):
         df = self.filtrar_muestra_ejecutantes()
-        if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
-        elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
-        return self._generar_ranking(df, 'OcupBen')
+        if df.empty or 'OcupBen' not in df.columns:
+            return pd.DataFrame()
+            
+        ranking = self._generar_ranking(df, 'OcupBen')
+        if ranking.empty:
+            return ranking
+            
+        if 'MonedaUtilizada' in df.columns:
+            df_soles = df[df['MonedaUtilizada'] == 'Sol peruano']
+            df_dolares = df[df['MonedaUtilizada'] == 'Dólar estadounidense']
+            
+            soles_stats = df_soles.groupby('OcupBen')['MontoOpe'].agg(['mean', 'max']).rename(
+                columns={'mean': 'promedio_soles', 'max': 'mayor_soles'}
+            )
+            dolares_stats = df_dolares.groupby('OcupBen')['MontoOpe'].agg(['mean', 'max']).rename(
+                columns={'mean': 'promedio_dolares', 'max': 'mayor_dolares'}
+            )
+            
+            ranking = ranking.join(soles_stats).join(dolares_stats)
+            cols_to_fill = ['promedio_soles', 'mayor_soles', 'promedio_dolares', 'mayor_dolares']
+            for c in cols_to_fill:
+                if c in ranking.columns:
+                    ranking[c] = ranking[c].fillna(0)
+                    ranking[c] = ranking[c].round(2)
+        return ranking
     
     def reporte_4_tipo_ope_ejecutantes(self, tipo='todos'):
-        df = self.filtrar_muestra_ejecutantes()
-        if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
-        elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
+        df = self.filtrar_muestra_ejecutantes() 
         return self._generar_ranking(df, 'TipoOpe')
     
     def reporte_5_beneficiarios_comunes(self):
         df = self.filtrar_muestra_ejecutantes()
         if df.empty:
             return pd.DataFrame()
-        resultado = df.groupby('NroDocBen').agg({
-            'NroDocSol': lambda x: list(x.unique()),
-            'MontoOpe': 'sum', 'id_operacion': 'count',
-            'NombresBen': lambda x: x.mode()[0] if not x.mode().empty else '',
+            
+        def get_full_name(r):
+            nombres = str(r.get('NombresSol', '')).strip() if pd.notna(r.get('NombresSol')) else ''
+            paterno = str(r.get('ApPaternoSol', '')).strip() if pd.notna(r.get('ApPaternoSol')) else ''
+            materno = str(r.get('ApMaternoSol', '')).strip() if pd.notna(r.get('ApMaternoSol')) else ''
+            
+            nombres = '' if nombres.lower() == 'nan' else nombres
+            paterno = '' if paterno.lower() == 'nan' else paterno
+            materno = '' if materno.lower() == 'nan' else materno
+            
+            parts = [x for x in [nombres, paterno, materno] if x]
+            return ' '.join(parts)
+            
+        def get_full_name_ben(r):
+            nombres = str(r.get('NombresBen', '')).strip() if pd.notna(r.get('NombresBen')) else ''
+            paterno = str(r.get('ApPaternoBen', '')).strip() if pd.notna(r.get('ApPaternoBen')) else ''
+            materno = str(r.get('ApMaternoBen', '')).strip() if pd.notna(r.get('ApMaternoBen')) else ''
+            
+            nombres = '' if nombres.lower() == 'nan' else nombres
+            paterno = '' if paterno.lower() == 'nan' else paterno
+            materno = '' if materno.lower() == 'nan' else materno
+            
+            parts = [x for x in [nombres, paterno, materno] if x]
+            return ' '.join(parts)
+            
+        def format_concat(doc, fullname):
+            doc = str(doc).strip() if pd.notna(doc) else ''
+            doc = '' if doc.lower() == 'nan' else doc
+            
+            if not doc and not fullname:
+                return np.nan
+            elif doc and fullname:
+                return f"{doc} - {fullname}"
+            else:
+                return doc if doc else fullname
+
+        df_temp = df.copy()
+        df_temp['fullname_sol'] = df_temp.apply(get_full_name, axis=1)
+        df_temp['fullname_ben'] = df_temp.apply(get_full_name_ben, axis=1)
+        df_temp['ejecutante_concat'] = df_temp.apply(lambda r: format_concat(r.get('NroDocSol'), r.get('fullname_sol')), axis=1)
+        
+        df_temp = df_temp[df_temp['ejecutante_concat'].notna()]
+        
+        if df_temp.empty:
+            return pd.DataFrame()
+
+        resultado = df_temp.groupby('NroDocBen').agg({
+            'fullname_ben': lambda x: x.mode()[0] if not x.mode().empty else '',
+            'NroDocSol': lambda x: list(x.dropna().unique()),
+            'ejecutante_concat': lambda x: list(x.unique()),
+            'MontoOpe': 'sum', 
+            'id_operacion': 'count',
             'OcupBen': lambda x: x.mode()[0] if not x.mode().empty else ''
-        }).rename(columns={'NroDocSol': 'ejecutantes', 'MontoOpe': 'monto_total', 'id_operacion': 'cantidad_operaciones'})
-        resultado['num_ejecutantes'] = resultado['ejecutantes'].apply(len)
+        }).rename(columns={
+            'fullname_ben': 'nombre_completo_beneficiario',
+            'NroDocSol': 'documentos_ejecutantes',
+            'ejecutante_concat': 'ejecutantes_detalles',
+            'MontoOpe': 'monto_total', 
+            'id_operacion': 'cantidad_operaciones'
+        })
+        
+        resultado['num_ejecutantes'] = resultado['ejecutantes_detalles'].apply(len)
         return resultado[resultado['num_ejecutantes'] > 1].sort_values('num_ejecutantes', ascending=False)
     
     def reporte_6_cuentas_ben_comunes(self):
         df = self.filtrar_muestra_ejecutantes()
         if df.empty or 'CtaBen' not in df.columns:
             return pd.DataFrame()
-        resultado = df[df['CtaBen'].notna()].groupby('CtaBen').agg({
-            'NroDocSol': lambda x: list(x.unique()),
-            'MontoOpe': 'sum', 'id_operacion': 'count'
-        }).rename(columns={'NroDocSol': 'ejecutantes', 'MontoOpe': 'monto_total', 'id_operacion': 'cantidad_operaciones'})
-        resultado['num_ejecutantes'] = resultado['ejecutantes'].apply(len)
+            
+        def get_full_name(r):
+            nombres = str(r.get('NombresSol', '')).strip() if pd.notna(r.get('NombresSol')) else ''
+            paterno = str(r.get('ApPaternoSol', '')).strip() if pd.notna(r.get('ApPaternoSol')) else ''
+            materno = str(r.get('ApMaternoSol', '')).strip() if pd.notna(r.get('ApMaternoSol')) else ''
+            
+            nombres = '' if nombres.lower() == 'nan' else nombres
+            paterno = '' if paterno.lower() == 'nan' else paterno
+            materno = '' if materno.lower() == 'nan' else materno
+            
+            parts = [x for x in [nombres, paterno, materno] if x]
+            return ' '.join(parts)
+            
+        def get_full_name_ben(r):
+            nombres = str(r.get('NombresBen', '')).strip() if pd.notna(r.get('NombresBen')) else ''
+            paterno = str(r.get('ApPaternoBen', '')).strip() if pd.notna(r.get('ApPaternoBen')) else ''
+            materno = str(r.get('ApMaternoBen', '')).strip() if pd.notna(r.get('ApMaternoBen')) else ''
+            
+            nombres = '' if nombres.lower() == 'nan' else nombres
+            paterno = '' if paterno.lower() == 'nan' else paterno
+            materno = '' if materno.lower() == 'nan' else materno
+            
+            parts = [x for x in [nombres, paterno, materno] if x]
+            return ' '.join(parts)
+            
+        def format_concat(doc, fullname):
+            doc = str(doc).strip() if pd.notna(doc) else ''
+            doc = '' if doc.lower() == 'nan' else doc
+            
+            if not doc and not fullname:
+                return np.nan
+            elif doc and fullname:
+                return f"{doc} - {fullname}"
+            else:
+                return doc if doc else fullname
+
+        df_temp = df[df['CtaBen'].notna()].copy()
+        df_temp['fullname_sol'] = df_temp.apply(get_full_name, axis=1)
+        df_temp['fullname_ben'] = df_temp.apply(get_full_name_ben, axis=1)
+        df_temp['ejecutante_concat'] = df_temp.apply(lambda r: format_concat(r.get('NroDocSol'), r.get('fullname_sol')), axis=1)
+        
+        df_temp = df_temp[df_temp['ejecutante_concat'].notna()]
+        
+        if df_temp.empty:
+            return pd.DataFrame()
+
+        resultado = df_temp.groupby('CtaBen').agg({
+            'fullname_ben': lambda x: x.mode()[0] if not x.mode().empty else '',
+            'NroDocSol': lambda x: list(x.dropna().unique()),
+            'ejecutante_concat': lambda x: list(x.unique()),
+            'MontoOpe': 'sum', 
+            'id_operacion': 'count'
+        }).rename(columns={
+            'fullname_ben': 'nombre_completo_beneficiario',
+            'NroDocSol': 'documentos_ejecutantes',
+            'ejecutante_concat': 'ejecutantes_detalles',
+            'MontoOpe': 'monto_total', 
+            'id_operacion': 'cantidad_operaciones'
+        })
+        
+        resultado['num_ejecutantes'] = resultado['ejecutantes_detalles'].apply(len)
         return resultado[resultado['num_ejecutantes'] > 1].sort_values('num_ejecutantes', ascending=False)
     
     def reporte_7_actividad_ben_efectivo(self, tipo='todos'):
         df = self.filtrar_muestra_ejecutantes()
         df = df[df['TipoFondo'] == 'Operación realizada con fondos en efectivo']
-        if tipo == 'persona':
-            df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
-        elif tipo == 'empresa':
-            df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
         return self._generar_ranking(df, 'OcupBen')
     
     def reporte_8_ordenantes_comunes(self):
@@ -161,7 +280,32 @@ class AnalizadorRO:
             df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
         elif tipo == 'empresa':
             df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
-        return self._generar_ranking(df, 'OcupBen')
+            
+        if df.empty or 'OcupBen' not in df.columns:
+            return pd.DataFrame()
+            
+        ranking = self._generar_ranking(df, 'OcupBen')
+        if ranking.empty:
+            return ranking
+            
+        if 'MonedaUtilizada' in df.columns:
+            df_soles = df[df['MonedaUtilizada'] == 'Sol peruano']
+            df_dolares = df[df['MonedaUtilizada'] == 'Dólar estadounidense']
+            
+            soles_stats = df_soles.groupby('OcupBen')['MontoOpe'].agg(['mean', 'max']).rename(
+                columns={'mean': 'promedio_soles', 'max': 'mayor_soles'}
+            )
+            dolares_stats = df_dolares.groupby('OcupBen')['MontoOpe'].agg(['mean', 'max']).rename(
+                columns={'mean': 'promedio_dolares', 'max': 'mayor_dolares'}
+            )
+            
+            ranking = ranking.join(soles_stats).join(dolares_stats)
+            cols_to_fill = ['promedio_soles', 'mayor_soles', 'promedio_dolares', 'mayor_dolares']
+            for c in cols_to_fill:
+                if c in ranking.columns:
+                    ranking[c] = ranking[c].fillna(0)
+                    ranking[c] = ranking[c].round(2)
+        return ranking
     
     def reporte_12_tipo_ope_ordenantes(self, tipo='todos'):
         df = self.filtrar_muestra_ordenantes()
@@ -169,7 +313,32 @@ class AnalizadorRO:
             df = df[df['TipPerOrd'].apply(self.es_persona).astype(bool)]
         elif tipo == 'empresa':
             df = df[df['TipPerOrd'].apply(self.es_empresa).astype(bool)]
-        return self._generar_ranking(df, 'TipoOpe')
+            
+        if df.empty or 'TipoOpe' not in df.columns:
+            return pd.DataFrame()
+            
+        ranking = self._generar_ranking(df, 'TipoOpe')
+        if ranking.empty:
+            return ranking
+            
+        if 'MonedaUtilizada' in df.columns:
+            df_soles = df[df['MonedaUtilizada'] == 'Sol peruano']
+            df_dolares = df[df['MonedaUtilizada'] == 'Dólar estadounidense']
+            
+            soles_stats = df_soles.groupby('TipoOpe')['MontoOpe'].agg(['mean', 'max']).rename(
+                columns={'mean': 'promedio_soles', 'max': 'mayor_soles'}
+            )
+            dolares_stats = df_dolares.groupby('TipoOpe')['MontoOpe'].agg(['mean', 'max']).rename(
+                columns={'mean': 'promedio_dolares', 'max': 'mayor_dolares'}
+            )
+            
+            ranking = ranking.join(soles_stats).join(dolares_stats)
+            cols_to_fill = ['promedio_soles', 'mayor_soles', 'promedio_dolares', 'mayor_dolares']
+            for c in cols_to_fill:
+                if c in ranking.columns:
+                    ranking[c] = ranking[c].fillna(0)
+                    ranking[c] = ranking[c].round(2)
+        return ranking
     
     def reporte_13_beneficiarios_comunes_ordenantes(self):
         df = self.filtrar_muestra_ordenantes()

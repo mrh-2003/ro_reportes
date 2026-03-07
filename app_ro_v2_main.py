@@ -247,24 +247,15 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
     elif tipo_analisis == "2. Vinculado Ejecutantes (para quién ejecutan)":
         st.header("🔗 Reporte 2: Vinculado Ejecutantes")
         mostrar_info_columnas(["destipclasifpartyrelacionado", "NroDocSol (muestra)", "TipPerOrd"])
-        t1, t2, t3 = st.tabs(["👥 Todos", "👤 Solo Personas Naturales", "🏢 Solo Personas Jurídicas"])
-        with t1: mostrar_tabla_con_toggle(analizador.reporte_2_vinculado_ejecutantes('todos'), "Todos")
-        with t2: mostrar_tabla_con_toggle(analizador.reporte_2_vinculado_ejecutantes('persona'), "Persona Natural")
-        with t3: mostrar_tabla_con_toggle(analizador.reporte_2_vinculado_ejecutantes('empresa'), "Persona Jurídica")
+        mostrar_tabla_con_toggle(analizador.reporte_2_vinculado_ejecutantes('todos'), "Todos") 
     elif tipo_analisis == "3. Actividad Económica Beneficiarios (a quién ejecutan)":
         st.header("💼 Reporte 3: Actividad Económica Beneficiarios")
         mostrar_info_columnas(["OcupBen", "NroDocSol (muestra)", "TipPerOrd"])
-        t1, t2, t3 = st.tabs(["👥 Todos", "👤 Solo Personas Naturales", "🏢 Solo Personas Jurídicas"])
-        with t1: mostrar_tabla_con_toggle(analizador.reporte_3_actividad_ben_ejecutantes('todos'), "Todos")
-        with t2: mostrar_tabla_con_toggle(analizador.reporte_3_actividad_ben_ejecutantes('persona'), "Persona Natural")
-        with t3: mostrar_tabla_con_toggle(analizador.reporte_3_actividad_ben_ejecutantes('empresa'), "Persona Jurídica")
+        mostrar_tabla_con_toggle(analizador.reporte_3_actividad_ben_ejecutantes('todos'), "Todos") 
     elif tipo_analisis == "4. Tipo Operación Ejecutantes (mediante qué ejecutan)":
         st.header("📋 Reporte 4: Tipo Operación Ejecutantes")
         mostrar_info_columnas(["TipoOpe", "NroDocSol (muestra)", "TipPerOrd"])
-        t1, t2, t3 = st.tabs(["👥 Todos", "👤 Solo Personas Naturales", "🏢 Solo Personas Jurídicas"])
-        with t1: mostrar_tabla_con_toggle(analizador.reporte_4_tipo_ope_ejecutantes('todos'), "Todos")
-        with t2: mostrar_tabla_con_toggle(analizador.reporte_4_tipo_ope_ejecutantes('persona'), "Persona Natural")
-        with t3: mostrar_tabla_con_toggle(analizador.reporte_4_tipo_ope_ejecutantes('empresa'), "Persona Jurídica")
+        mostrar_tabla_con_toggle(analizador.reporte_4_tipo_ope_ejecutantes('todos'), "Todos") 
     elif tipo_analisis == "5. Beneficiarios en Común (ejecutantes)":
         st.header("👥 Reporte 5: Beneficiarios en Común")
         mostrar_info_columnas(["NroDocBen", "NroDocSol (muestra)", "NombresBen", "OcupBen"])
@@ -278,7 +269,7 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
             st.info("No hay beneficiarios en común")
     elif tipo_analisis == "6. Cuentas Beneficiarias en Común (ejecutantes)":
         st.header("🏦 Reporte 6: Cuentas Beneficiarias en Común")
-        mostrar_info_columnas(["CtaBen", "NroDocSol (muestra)"])
+        mostrar_info_columnas(["CtaBen", "NroDocSol (muestra)", "NombresBen", "ApPaternoBen", "ApMaternoBen", "NombresSol", "ApPaternoSol", "ApMaternoSol"])
         resultado = analizador.reporte_6_cuentas_ben_comunes()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)
@@ -290,10 +281,7 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
     elif tipo_analisis == "7. Actividad Económica Ben. en Efectivo (ejecutantes)":
         st.header("💵 Reporte 7: Actividad Ben. en Efectivo")
         mostrar_info_columnas(["OcupBen", "TipoFondo", "NroDocSol (muestra)"])
-        t1, t2, t3 = st.tabs(["👥 Todos", "👤 Solo Personas Naturales", "🏢 Solo Personas Jurídicas"])
-        with t1: mostrar_tabla_con_toggle(analizador.reporte_7_actividad_ben_efectivo('todos'), "Todos")
-        with t2: mostrar_tabla_con_toggle(analizador.reporte_7_actividad_ben_efectivo('persona'), "Persona Natural")
-        with t3: mostrar_tabla_con_toggle(analizador.reporte_7_actividad_ben_efectivo('empresa'), "Persona Jurídica")
+        mostrar_tabla_con_toggle(analizador.reporte_7_actividad_ben_efectivo('todos'), "Todos")
     elif tipo_analisis == "8. Ordenantes en Común (ejecutantes)":
         st.header("👥 Reporte 8: Ordenantes en Común")
         mostrar_info_columnas(["NroDocOrd", "NroDocSol (muestra)"])
@@ -625,6 +613,7 @@ def pagina_analisis():
     
     st.subheader("Seleccione el Reporte a Ejecutar")
     reportes = [
+        "TODOS (Ver múltiples reportes)",
         "Top 10 - Todas las Columnas", "1. Actividad Más Común Ejecutantes", "2. Vinculado Ejecutantes (para quién ejecutan)",
         "3. Actividad Económica Beneficiarios (a quién ejecutan)", "4. Tipo Operación Ejecutantes (mediante qué ejecutan)",
         "5. Beneficiarios en Común (ejecutantes)", "6. Cuentas Beneficiarias en Común (ejecutantes)",
@@ -649,17 +638,37 @@ def pagina_analisis():
     
     analisis_sel = st.selectbox("Seleccione el reporte", reportes, label_visibility="collapsed")
     
-    dias_analisis = 7
-    if analisis_sel == "26. Post Transferencia Internacional":
-        dias_analisis = st.slider("Días para analizar operaciones posteriores", 1, 30, 7)
-    
-    if st.button("🚀 Ejecutar Análisis", type="primary", use_container_width=True):
-        if st.session_state.df_analisis is not None and not st.session_state.df_analisis.empty:
-            analizador = AnalizadorRO(st.session_state.df_analisis, st.session_state.clientes_muestra)
-            viz = Visualizador()
-            ejecutar_analisis(analisis_sel, analizador, viz, st.session_state.df_analisis, dias_analisis)
-        else:
-            st.error("No hay datos para analizar.")
+    if analisis_sel == "TODOS (Ver múltiples reportes)":
+        opciones_reales = reportes[1:]
+        st.info("💡 Seleccione el rango de reportes que desea generar en lote")
+        rango_min, rango_max = st.slider("Rango de reportes", 1, len(opciones_reales), (1, len(opciones_reales)))
+        
+        dias_analisis = 7
+        reportes_seleccionados = opciones_reales[rango_min-1:rango_max]
+        
+        if any("26." in rep for rep in reportes_seleccionados):
+            dias_analisis = st.slider("Días para analizar operaciones posteriores (Reporte 26)", 1, 30, 7)
+            
+        if st.button("🚀 Ejecutar Análisis", type="primary", use_container_width=True):
+            if st.session_state.df_analisis is not None and not st.session_state.df_analisis.empty:
+                analizador = AnalizadorRO(st.session_state.df_analisis, st.session_state.clientes_muestra)
+                viz = Visualizador()
+                for rep in reportes_seleccionados:
+                    ejecutar_analisis(rep, analizador, viz, st.session_state.df_analisis, dias_analisis)
+            else:
+                st.error("No hay datos para analizar.")
+    else:
+        dias_analisis = 7
+        if analisis_sel == "26. Post Transferencia Internacional":
+            dias_analisis = st.slider("Días para analizar operaciones posteriores", 1, 30, 7)
+        
+        if st.button("🚀 Ejecutar Análisis", type="primary", use_container_width=True):
+            if st.session_state.df_analisis is not None and not st.session_state.df_analisis.empty:
+                analizador = AnalizadorRO(st.session_state.df_analisis, st.session_state.clientes_muestra)
+                viz = Visualizador()
+                ejecutar_analisis(analisis_sel, analizador, viz, st.session_state.df_analisis, dias_analisis)
+            else:
+                st.error("No hay datos para analizar.")
 
 def main():
     st.sidebar.title("🔍 Sistema RO v2")
