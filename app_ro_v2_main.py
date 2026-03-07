@@ -398,7 +398,7 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
             st.info("No hay ordenantes en común")
     elif tipo_analisis == "22. Cuentas Ordenantes en Común (beneficiarios)":
         st.header("🏦 Reporte 22: Cuentas Ord. en Común (Beneficiarios)")
-        mostrar_info_columnas(["CtaOrd", "NroDocBen (muestra)"])
+        mostrar_info_columnas(["CtaOrd", "NroDocBen (muestra)", "NombresOrd", "ApPaternoOrd", "ApMaternoOrd", "NombresBen", "ApPaternoBen", "ApMaternoBen"])
         resultado = analizador.reporte_22_cuentas_ord_comunes_beneficiarios()
         if not resultado.empty:
             st.dataframe(resultado, use_container_width=True, height=400)
