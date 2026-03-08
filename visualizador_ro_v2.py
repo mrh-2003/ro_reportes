@@ -109,7 +109,8 @@ class Visualizador:
         for edge in net.edges:
             o = edge['from']
             d = edge['to']
-            w = edge.get('weight', 1)
+            # PyVis renames the 'weight' payload to 'width' during from_nx
+            w = edge.get('width', 1.0)
             
             edge['label'] = f"${w:,.2f}"
             
