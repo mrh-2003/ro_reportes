@@ -201,7 +201,7 @@ def mostrar_tabla_con_toggle(df, nombre_base, mostrar_grafico=True):
         st.warning(f"No hay datos para {nombre_base}")
         return
     
-    tab1, tab2 = st.tabs(["📊 Por Cantidad", "💰 Por Monto"])
+    tab1, tab2, tab3 = st.tabs(["📊 Por Cantidad", "💰 Por Monto", "💵 Por Monto Dolarizado"])
     with tab1:
         if 'cantidad_operaciones' in df.columns:
             df_cant = df.sort_values('cantidad_operaciones', ascending=False).head(20)
@@ -216,6 +216,15 @@ def mostrar_tabla_con_toggle(df, nombre_base, mostrar_grafico=True):
             if mostrar_grafico and len(df_monto) > 0:
                 fig = Visualizador.crear_barras(df_monto.reset_index(), df_monto.index.name if df_monto.index.name else 'index', 'monto_total', f'Top 20 - {nombre_base} (Por Monto)', df_monto.index.name if df_monto.index.name else 'Categoría', 'Monto Total')
                 st.plotly_chart(fig, use_container_width=True)
+    with tab3:
+        if 'monto_dolarizado' in df.columns:
+            df_dolar = df.sort_values('monto_dolarizado', ascending=False).head(20)
+            st.dataframe(df_dolar, use_container_width=True, height=400)
+            if mostrar_grafico and len(df_dolar) > 0:
+                fig = Visualizador.crear_barras(df_dolar.reset_index(), df_dolar.index.name if df_dolar.index.name else 'index', 'monto_dolarizado', f'Top 20 - {nombre_base} (Dolarizado)', df_dolar.index.name if df_dolar.index.name else 'Categoría', 'Monto USD')
+                st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("La columna de monto dolarizado no está disponible para este reporte.")
 
 def mostrar_grafo_relaciones(df_ops, col_origen, col_destino, viz):
     if df_ops.empty or col_origen not in df_ops.columns or col_destino not in df_ops.columns:

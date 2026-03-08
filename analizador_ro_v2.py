@@ -9,6 +9,12 @@ class AnalizadorRO:
         
         if 'MontoOpe' in self.df.columns:
             self.df['MontoOpe'] = pd.to_numeric(self.df['MontoOpe'], errors='coerce').fillna(0)
+            if 'MonedaUtilizada' in self.df.columns:
+                tasas = {'Sol peruano': 0.29, 'Euro': 1.16, 'Libra esterlina': 1.34}
+                factores = self.df['MonedaUtilizada'].astype(str).str.strip().map(tasas).fillna(1.0)
+                self.df['MontoDolarizado'] = self.df['MontoOpe'] * factores
+            else:
+                self.df['MontoDolarizado'] = self.df['MontoOpe']
         if 'FechaOp' in self.df.columns:
             self.df['FechaOp'] = pd.to_datetime(self.df['FechaOp'], errors='coerce')
         if 'HoraOp' in self.df.columns:
@@ -107,13 +113,23 @@ class AnalizadorRO:
     def _generar_ranking(self, df, columna, rename_id='cantidad_operaciones', rename_monto='monto_total'):
         if df.empty or columna not in df.columns:
             return pd.DataFrame()
-        ranking = df.groupby(columna).agg({
-            'id_operacion': 'count', 'MontoOpe': 'sum'
-        }).rename(columns={'id_operacion': rename_id, 'MontoOpe': rename_monto})
+            
+        agg_cols = {'id_operacion': 'count', 'MontoOpe': 'sum'}
+        if 'MontoDolarizado' in df.columns:
+            agg_cols['MontoDolarizado'] = 'sum'
+            
+        ranking = df.groupby(columna).agg(agg_cols).rename(columns={'id_operacion': rename_id, 'MontoOpe': rename_monto})
         total_cant = ranking[rename_id].sum()
         total_monto = ranking[rename_monto].sum()
+        
         ranking['porcentaje_cantidad'] = (ranking[rename_id] / total_cant * 100).round(2) if total_cant > 0 else 0.0
         ranking['porcentaje_monto'] = (ranking[rename_monto] / total_monto * 100).round(2) if total_monto > 0 else 0.0
+        
+        if 'MontoDolarizado' in ranking.columns:
+            ranking = ranking.rename(columns={'MontoDolarizado': 'monto_dolarizado'})
+            total_usd = ranking['monto_dolarizado'].sum()
+            ranking['porcentaje_dolarizado'] = (ranking['monto_dolarizado'] / total_usd * 100).round(2) if total_usd > 0 else 0.0
+            
         return ranking.sort_values(rename_id, ascending=False)
 
     def reporte_top10(self):
