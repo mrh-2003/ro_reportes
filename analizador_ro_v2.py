@@ -208,7 +208,7 @@ class AnalizadorRO:
         return self._generar_ranking(df, 'OcupBen')
     
     def reporte_8_ordenantes_comunes(self):
-        df_temp = self.filtrar_muestra_ordenantes()
+        df_temp = self.filtrar_muestra_ejecutantes()
         df_temp = df_temp[df_temp['NroDocOrd'].notna() & df_temp['NroDocSol'].notna()].copy()
         if df_temp.empty: return pd.DataFrame()
         resultado = df_temp.groupby('NroDocOrd').agg({
@@ -710,7 +710,7 @@ class AnalizadorRO:
     
     def reporte_33_misma_direccion(self):
         resultados = []
-        df_sol_ord = self.df[(self.df['DireccionSol'].notna()) & (self.df['DireccionOrd'].notna()) & (self.df['DireccionSol'] == self.df['DireccionOrd'])]
+        df_sol_ord = self.df[(self.df['DireccionSol'].notna()) & (self.df['DireccionOrd'].notna()) & (self.df['DireccionSol'] == self.df['DireccionOrd']) & (self.df['NroDocSol'] != self.df['NroDocOrd'])]
         for dir in df_sol_ord['DireccionSol'].unique()[:50]:
             df_g = df_sol_ord[df_sol_ord['DireccionSol'] == dir]
             resultados.append({
@@ -722,7 +722,7 @@ class AnalizadorRO:
                 'cant_beneficiarios': 0, 'beneficiarios': '-'
             })
             
-        df_sol_ben = self.df[(self.df['DireccionSol'].notna()) & (self.df['DireccionBen'].notna()) & (self.df['DireccionSol'] == self.df['DireccionBen'])]
+        df_sol_ben = self.df[(self.df['DireccionSol'].notna()) & (self.df['DireccionBen'].notna()) & (self.df['DireccionSol'] == self.df['DireccionBen']) & (self.df['NroDocSol'] != self.df['NroDocBen'])]
         for dir in df_sol_ben['DireccionSol'].unique()[:50]:
             df_g = df_sol_ben[df_sol_ben['DireccionSol'] == dir]
             resultados.append({
@@ -734,7 +734,7 @@ class AnalizadorRO:
                 'beneficiarios': ', '.join([str(x) for x in df_g['NroDocBen'].dropna().unique()])
             })
             
-        df_ord_ben = self.df[(self.df['DireccionOrd'].notna()) & (self.df['DireccionBen'].notna()) & (self.df['DireccionOrd'] == self.df['DireccionBen'])]
+        df_ord_ben = self.df[(self.df['DireccionOrd'].notna()) & (self.df['DireccionBen'].notna()) & (self.df['DireccionOrd'] == self.df['DireccionBen']) & (self.df['NroDocOrd'] != self.df['NroDocBen'])]
         for dir in df_ord_ben['DireccionOrd'].unique()[:50]:
             df_g = df_ord_ben[df_ord_ben['DireccionOrd'] == dir]
             resultados.append({
@@ -750,7 +750,7 @@ class AnalizadorRO:
     
     def reporte_34_mismo_telefono(self):
         resultados = []
-        df_sol_ord = self.df[(self.df['TelefonoSol'].notna()) & (self.df['TelefonoOrd'].notna()) & (self.df['TelefonoSol'] == self.df['TelefonoOrd'])]
+        df_sol_ord = self.df[(self.df['TelefonoSol'].notna()) & (self.df['TelefonoOrd'].notna()) & (self.df['TelefonoSol'] == self.df['TelefonoOrd']) & (self.df['NroDocSol'] != self.df['NroDocOrd'])]
         for tel in df_sol_ord['TelefonoSol'].unique()[:50]:
             df_g = df_sol_ord[df_sol_ord['TelefonoSol'] == tel]
             resultados.append({
@@ -762,7 +762,7 @@ class AnalizadorRO:
                 'cant_beneficiarios': 0, 'beneficiarios': '-'
             })
             
-        df_sol_ben = self.df[(self.df['TelefonoSol'].notna()) & (self.df['TelefonoBen'].notna()) & (self.df['TelefonoSol'] == self.df['TelefonoBen'])]
+        df_sol_ben = self.df[(self.df['TelefonoSol'].notna()) & (self.df['TelefonoBen'].notna()) & (self.df['TelefonoSol'] == self.df['TelefonoBen']) & (self.df['NroDocSol'] != self.df['NroDocBen'])]
         for tel in df_sol_ben['TelefonoSol'].unique()[:50]:
             df_g = df_sol_ben[df_sol_ben['TelefonoSol'] == tel]
             resultados.append({
@@ -774,7 +774,7 @@ class AnalizadorRO:
                 'beneficiarios': ', '.join([str(x) for x in df_g['NroDocBen'].dropna().unique()])
             })
             
-        df_ord_ben = self.df[(self.df['TelefonoOrd'].notna()) & (self.df['TelefonoBen'].notna()) & (self.df['TelefonoOrd'] == self.df['TelefonoBen'])]
+        df_ord_ben = self.df[(self.df['TelefonoOrd'].notna()) & (self.df['TelefonoBen'].notna()) & (self.df['TelefonoOrd'] == self.df['TelefonoBen']) & (self.df['NroDocOrd'] != self.df['NroDocBen'])]
         for tel in df_ord_ben['TelefonoOrd'].unique()[:50]:
             df_g = df_ord_ben[df_ord_ben['TelefonoOrd'] == tel]
             resultados.append({
@@ -893,6 +893,11 @@ class AnalizadorRO:
             if len(muestra_en_op) >= 2:
                 es_misma_persona = len(docs_unicos) == 1
                 
+                origen = str(row.get('NroDocOrd', '')).strip()
+                if not origen or origen.lower() == 'nan':
+                     origen = str(row.get('NroDocSol', '')).strip()
+                destino = str(row.get('NroDocBen', '')).strip()
+                
                 ops_dict = {
                     'operacion_id': row.get('id_operacion'),
                     'tipo_operacion': row.get('TipoOpe'),
@@ -900,7 +905,9 @@ class AnalizadorRO:
                     'fecha': row.get('FechaOp'),
                     'relacion': ' <-> '.join([f"{r[0]}:{r[1]}" for r in muestra_en_op]),
                     'detalles_participantes': ' | '.join(doc_nombres),
-                    'num_clientes_muestra': len(muestra_en_op)
+                    'num_clientes_muestra': len(muestra_en_op),
+                    'origen_grafo': origen if origen and origen.lower() != 'nan' else 'Desconocido',
+                    'destino_grafo': destino if destino and destino.lower() != 'nan' else 'Desconocido'
                 }
                 
                 if es_misma_persona:

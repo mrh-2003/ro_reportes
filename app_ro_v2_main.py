@@ -604,6 +604,9 @@ def ejecutar_analisis(tipo_analisis, analizador, viz, df_operaciones, dias_anali
             st.dataframe(df_intra, use_container_width=True, height=400)
         else:
             st.info("No hay operaciones hacia sí mismo (Misma Persona)")
+            
+        if not df_inter.empty:
+            mostrar_grafo_relaciones(df_inter, 'origen_grafo', 'destino_grafo', viz)
 
 def pagina_analisis():
     st.title("📊 Análisis de Datos RO")
